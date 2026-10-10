@@ -3,45 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodeBuddy - Virtual Pet</title>
+    <title>DevPet (CodeBuddy) - Gamified Developer Companion</title>
+    <meta name="description" content="A gamified retro cyberpunk virtual pet companion for developers with Pomodoro focus timer, tasks, achievements, and shop.">
+    <meta name="theme-color" content="#0b0d13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
     <!-- Parallax Background System -->
-    <div class="parallax-bg">
+    <div class="parallax-bg" id="parallax-bg" aria-hidden="true">
         <div class="bg-stars"></div>
         <div class="bg-grid-perspective"></div>
     </div>
 
     <!-- Top Navigation Bar -->
-    <nav class="top-nav panel">
+    <nav class="top-nav panel" aria-label="Main Navigation">
         <div class="nav-left">
-            <select id="theme-switcher" class="retro-select">
+            <select id="theme-switcher" class="retro-select" aria-label="Color Theme">
                 <option value="cyberpunk">Cyberpunk</option>
                 <option value="dark">Dark</option>
                 <option value="retro">Retro Green</option>
                 <option value="space">Space</option>
                 <option value="forest">Forest</option>
             </select>
-            <button id="btn-mute" class="toggle-btn">🔊</button>
+            <button id="btn-mute" class="toggle-btn" aria-label="Toggle Sound" title="Toggle Sound">🔊</button>
         </div>
         <div class="nav-right">
-            <button id="btn-floating" class="toggle-btn">FLOAT MODE</button>
-            <button id="btn-export" class="toggle-btn">EXPORT</button>
-            <label class="toggle-btn">
-                IMPORT <input type="file" id="btn-import" accept=".json" style="display:none;">
+            <button id="btn-floating" class="toggle-btn" aria-label="Enter Float Mode">FLOAT MODE</button>
+            <button id="btn-export" class="toggle-btn" aria-label="Export Save Data">EXPORT</button>
+            <label class="toggle-btn" for="btn-import" tabindex="0" role="button" aria-label="Import Save Data">
+                IMPORT <input type="file" id="btn-import" accept=".json" class="sr-only">
             </label>
-            <button id="btn-reset" class="toggle-btn text-error">RESET</button>
+            <button id="btn-reset" class="toggle-btn text-error" aria-label="Reset All Progress">RESET</button>
         </div>
     </nav>
 
     <div class="app-container" id="app-container">
         <!-- Header / Stats Column -->
         <header class="stats-panel panel">
-            <h1>CodeBuddy<span class="cursor">_</span></h1>
+            <h1>CodeBuddy<span class="cursor" aria-hidden="true">_</span></h1>
             
             <div class="stat-group">
                 <div class="stat-label">LEVEL</div>
@@ -50,19 +52,19 @@
 
             <div class="stat-group">
                 <div class="stat-label">XP (<span id="xp-text">0</span>/100)</div>
-                <div class="progress-bar-container">
+                <div class="progress-bar-container" role="progressbar" id="xp-container" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Experience Points">
                     <div class="progress-bar xp-bar" id="xp-bar"></div>
                 </div>
             </div>
 
             <div class="stat-group">
                 <div class="stat-label">HAPPINESS (<span id="happiness-text">100</span>/100)</div>
-                <div class="progress-bar-container">
+                <div class="progress-bar-container" role="progressbar" id="happiness-container" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Companion Happiness">
                     <div class="progress-bar happiness-bar" id="happiness-bar"></div>
                 </div>
             </div>
 
-            <!-- New Stats -->
+            <!-- Stats -->
             <div class="stat-group">
                 <div class="stat-label">COINS 🪙</div>
                 <div class="stat-value text-warning" id="coins-display">0</div>
@@ -75,16 +77,16 @@
             </div>
 
             <!-- Pomodoro Timer -->
-            <div class="pomodoro-panel">
+            <section class="pomodoro-panel" aria-label="Focus Timer">
                 <div class="stat-label">FOCUS TIMER</div>
-                <div class="pomodoro-display" id="pomodoro-time">25:00</div>
+                <div class="pomodoro-display" id="pomodoro-time" aria-live="off">25:00</div>
                 <div class="pomodoro-controls">
-                    <button id="btn-pomo-25" class="toggle-btn">25</button>
-                    <button id="btn-pomo-50" class="toggle-btn">50</button>
-                    <button id="btn-pomo-start" class="toggle-btn text-primary">▶</button>
-                    <button id="btn-pomo-stop" class="toggle-btn text-error">⏹</button>
+                    <button id="btn-pomo-25" class="toggle-btn active" aria-label="Set 25 minute timer">25</button>
+                    <button id="btn-pomo-50" class="toggle-btn" aria-label="Set 50 minute timer">50</button>
+                    <button id="btn-pomo-start" class="toggle-btn text-primary" aria-label="Start Timer">▶</button>
+                    <button id="btn-pomo-stop" class="toggle-btn text-error" aria-label="Stop Timer">⏹</button>
                 </div>
-            </div>
+            </section>
 
             <button id="btn-task" class="action-button retro-button">
                 [ COMPLETE CODING TASK ]
@@ -94,15 +96,15 @@
 
         <!-- Pet Stage Center -->
         <main class="pet-stage panel glass-panel">
-            <canvas id="pet-atmosphere"></canvas>
-            <div id="particle-container"></div>
+            <canvas id="pet-atmosphere" aria-hidden="true"></canvas>
+            <div id="particle-container" aria-hidden="true"></div>
             
-            <div id="dialogue-bubble" class="hidden"></div>
-            <div id="event-container" class="hidden"></div>
+            <div id="dialogue-bubble" class="hidden" role="status" aria-live="polite"></div>
+            <div id="event-container" class="hidden" role="button" tabindex="0" aria-label="Random companion event"></div>
 
             <div class="pet-room">
-                <div class="pet-platform"></div>
-                <div class="pet-container" id="pet-container">
+                <div class="pet-platform" aria-hidden="true"></div>
+                <div class="pet-container" id="pet-container" role="img" aria-label="CodeBuddy pixel pet">
                 <!-- Base Pet SVG -->
                 <svg class="pet-svg" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
                     <!-- Body -->
@@ -124,20 +126,33 @@
 
                 <!-- Accessories Layer -->
                 <div id="accessory-layer">
-                    <!-- Hat SVG -->
+                    <!-- Retro Cap SVG -->
                     <svg id="acc-hat" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
                         <rect x="4" y="6" width="16" height="2" fill="#555" />
                         <rect x="8" y="2" width="8" height="4" fill="#666" />
                         <rect x="8" y="5" width="8" height="1" fill="var(--color-warning)" />
                     </svg>
 
-                    <!-- Glasses SVG -->
+                    <!-- Top Hat SVG (Shop item: acc-hat2) -->
+                    <svg id="acc-hat2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="4" y="7" width="16" height="2" fill="#222" />
+                        <rect x="7" y="1" width="10" height="6" fill="#111" />
+                        <rect x="7" y="6" width="10" height="1" fill="var(--color-error)" />
+                    </svg>
+
+                    <!-- Cyber Shades SVG -->
                     <svg id="acc-glasses" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
                         <rect x="7" y="10" width="4" height="3" fill="var(--color-warning)" />
                         <rect x="13" y="10" width="4" height="3" fill="var(--color-warning)" />
                         <rect x="11" y="10" width="2" height="1" fill="var(--color-warning)" />
                         <rect x="6" y="10" width="1" height="1" fill="var(--color-warning)" />
                         <rect x="17" y="10" width="1" height="1" fill="var(--color-warning)" />
+                    </svg>
+
+                    <!-- Neon Shades SVG (Shop item: acc-shades2) -->
+                    <svg id="acc-shades2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="10" width="12" height="3" fill="var(--color-error)" />
+                        <rect x="7" y="11" width="10" height="1" fill="#ffffff" />
                     </svg>
 
                     <!-- Crown SVG -->
@@ -153,22 +168,22 @@
                 </div>
             </div>
             </div>
-            <div id="sleep-particles" class="hidden"></div>
+            <div id="sleep-particles" class="hidden" aria-hidden="true"></div>
         </main>
 
         <!-- Right / Bottom Columns: Tabs -->
-        <aside class="side-panel panel">
-            <div class="tabs-header">
-                <button class="tab-btn active" data-tab="shop">SHOP</button>
-                <button class="tab-btn" data-tab="inventory">INV</button>
-                <button class="tab-btn" data-tab="achievements">ACH</button>
-                <button class="tab-btn" data-tab="challenges">CHAL</button>
-                <button class="tab-btn" data-tab="stats">STATS</button>
+        <aside class="side-panel panel" aria-label="Game Tabs">
+            <div class="tabs-header" role="tablist">
+                <button class="tab-btn active" role="tab" aria-selected="true" data-tab="shop">SHOP</button>
+                <button class="tab-btn" role="tab" aria-selected="false" data-tab="inventory">INV</button>
+                <button class="tab-btn" role="tab" aria-selected="false" data-tab="achievements">ACH</button>
+                <button class="tab-btn" role="tab" aria-selected="false" data-tab="challenges">CHAL</button>
+                <button class="tab-btn" role="tab" aria-selected="false" data-tab="stats">STATS</button>
             </div>
             
             <div class="tab-content-container">
                 <!-- Shop Tab -->
-                <section id="tab-shop" class="tab-content active">
+                <section id="tab-shop" class="tab-content active" role="tabpanel">
                     <h2>IN-GAME SHOP</h2>
                     <div class="shop-grid" id="shop-grid">
                         <!-- Items injected by JS -->
@@ -176,7 +191,7 @@
                 </section>
 
                 <!-- Inventory Tab (merged with Collectibles) -->
-                <section id="tab-inventory" class="tab-content">
+                <section id="tab-inventory" class="tab-content" role="tabpanel">
                     <h2>INVENTORY</h2>
                     <div class="inventory-grid" id="inventory-grid">
                         <!-- Items injected by JS -->
@@ -189,7 +204,7 @@
                 </section>
 
                 <!-- Achievements Tab -->
-                <section id="tab-achievements" class="tab-content">
+                <section id="tab-achievements" class="tab-content" role="tabpanel">
                     <h2>ACHIEVEMENTS</h2>
                     <div class="achievements-list" id="achievements-list">
                         <!-- Items injected by JS -->
@@ -197,7 +212,7 @@
                 </section>
 
                 <!-- Challenges Tab -->
-                <section id="tab-challenges" class="tab-content">
+                <section id="tab-challenges" class="tab-content" role="tabpanel">
                     <h2>WEEKLY CHALLENGES</h2>
                     <div class="challenges-list" id="challenges-list">
                         <!-- Items injected by JS -->
@@ -205,7 +220,7 @@
                 </section>
 
                 <!-- Stats Tab -->
-                <section id="tab-stats" class="tab-content">
+                <section id="tab-stats" class="tab-content" role="tabpanel">
                     <h2>STATISTICS</h2>
                     <div class="stats-dashboard">
                         <div class="dashboard-item">Total Tasks: <span id="dash-tasks">0</span></div>
@@ -215,6 +230,7 @@
                         <div class="dashboard-item">Coins: <span id="dash-coins">0</span></div>
                         <div class="dashboard-item">Longest Streak: <span id="dash-streak">0</span></div>
                         <div class="dashboard-item">Achievements: <span id="dash-achievements">0</span></div>
+                        <div class="dashboard-item">Playtime: <span id="dash-playtime">0m</span></div>
                     </div>
                 </section>
             </div>
@@ -222,38 +238,40 @@
     </div>
 
     <!-- Modals & Toasts -->
-    <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content panel">
-            <h1 class="text-warning">LEVEL UP!</h1>
+            <h1 class="text-warning" id="modal-title">LEVEL UP!</h1>
             <p>Your companion evolved!</p>
             <p>Level <span id="modal-level">2</span></p>
             <button id="btn-close-modal" class="retro-button">[ AWESOME ]</button>
         </div>
     </div>
 
-    <div id="toast-container"></div>
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Floating Companion Widget -->
-    <div class="floating-widget panel hidden-by-default">
+    <div class="floating-widget panel hidden-by-default" id="floating-widget" aria-label="Floating Pet Widget">
         <div class="fw-header">
             <span>CodeBuddy</span>
-            <button id="btn-unfloat" class="toggle-btn text-primary">EXPAND</button>
+            <button id="btn-unfloat" class="toggle-btn text-primary" aria-label="Expand back to full window">EXPAND</button>
         </div>
-        <div class="fw-pet" id="fw-pet-container">
-            <!-- SVG cloned or simplified here -->
+        <div class="fw-pet" id="fw-pet-container" role="img" aria-label="Floating pet mini view">
             <svg class="pet-svg" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-                <rect x="6" y="8" width="12" height="10" fill="var(--color-primary)" />
+                <rect class="pet-body" x="6" y="8" width="12" height="10" fill="var(--color-primary)" />
                 <rect x="8" y="10" width="8" height="5" fill="var(--color-bg)" />
                 <rect class="pet-eye" x="9" y="11" width="2" height="2" fill="var(--color-accent)" />
                 <rect class="pet-eye" x="13" y="11" width="2" height="2" fill="var(--color-accent)" />
                 <rect class="pet-mouth" x="10" y="14" width="4" height="1" fill="var(--color-accent)" />
-                <rect x="7" y="18" width="2" height="4" fill="var(--color-text)" />
-                <rect x="15" y="18" width="2" height="4" fill="var(--color-text)" />
+                <rect class="pet-leg" x="7" y="18" width="2" height="4" fill="var(--color-text)" />
+                <rect class="pet-leg" x="15" y="18" width="2" height="4" fill="var(--color-text)" />
             </svg>
         </div>
-        <div style="font-size: 0.8rem; text-align: center;">XP: <span id="fw-xp">0</span></div>
+        <div style="font-size: 0.85rem; text-align: center; font-family: var(--font-pixel);">
+            LVL <span id="fw-level" class="text-accent">1</span> | XP: <span id="fw-xp" class="text-primary">0</span>/100
+        </div>
+        <button id="btn-fw-task" class="toggle-btn text-primary" style="margin-top: 4px; width: 100%;">+ TASK</button>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>
