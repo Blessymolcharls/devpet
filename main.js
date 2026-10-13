@@ -47,26 +47,59 @@ function broadcastState(state, senderWebContents = null) {
     });
 }
 
+// --- Window Dimensions & Zoom Constants ---
+const COMPACT_WIDTH = 230;
+const COMPACT_HEIGHT = 250;
+const ZOOMED_WIDTH = 320;
+const ZOOMED_HEIGHT = 350;
+let isCurrentPetZoomed = false;
+
 // --- Position Persistence & Screen Boundary Clamping ---
-function loadSavedPosition(width = 280, height = 300) {
-    const primary = screen.getPrimaryDisplay();
-    const workArea = primary.workArea;
-    const defaultX = workArea.x + workArea.width - width - 40;
-    const defaultY = workArea.y + workArea.height - height - 40;
+function loadSavedPositionConfig() {
+    let isZoomed = false;
+    let savedPos = null;
 
     try {
         if (fs.existsSync(POSITION_FILE)) {
             const raw = fs.readFileSync(POSITION_FILE, 'utf-8');
-            const pos = JSON.parse(raw);
-            if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-                return clampToWorkArea(pos.x, pos.y, width, height);
+            const data = JSON.parse(raw);
+            if (data && typeof data === 'object') {
+                if (typeof data.isZoomed === 'boolean') {
+                    isZoomed = data.isZoomed;
+                }
+                if (typeof data.x === 'number' && typeof data.y === 'number') {
+                    savedPos = { x: data.x, y: data.y };
+                }
             }
         }
     } catch (err) {
-        console.error('[DevPet] Failed to read pet position:', err);
+        console.error('[DevPet] Failed to read pet position config:', err);
     }
 
-    return { x: defaultX, y: defaultY };
+    const width = isZoomed ? ZOOMED_WIDTH : COMPACT_WIDTH;
+    const height = isZoomed ? ZOOMED_HEIGHT : COMPACT_HEIGHT;
+
+    const primary = screen.getPrimaryDisplay();
+    const workArea = primary.workArea;
+    const defaultX = workArea.x + workArea.width - width - 24;
+    const defaultY = workArea.y + workArea.height - height - 24;
+
+    const x = savedPos ? savedPos.x : defaultX;
+    const y = savedPos ? savedPos.y : defaultY;
+    const clamped = clampToWorkArea(x, y, width, height);
+
+    return {
+        x: clamped.x,
+        y: clamped.y,
+        width,
+        height,
+        isZoomed
+    };
+}
+
+function loadSavedPosition(width = COMPACT_WIDTH, height = COMPACT_HEIGHT) {
+    const config = loadSavedPositionConfig();
+    return clampToWorkArea(config.x, config.y, width, height);
 }
 
 function clampToWorkArea(x, y, width, height) {
@@ -79,10 +112,17 @@ function clampToWorkArea(x, y, width, height) {
     return { x: Math.round(clampedX), y: Math.round(clampedY) };
 }
 
-function savePosition(x, y, width = 280, height = 300) {
+function savePosition(x, y, width = COMPACT_WIDTH, height = COMPACT_HEIGHT, isZoomed = isCurrentPetZoomed) {
     try {
         const clamped = clampToWorkArea(x, y, width, height);
-        fs.writeFileSync(POSITION_FILE, JSON.stringify(clamped), 'utf-8');
+        const data = {
+            x: clamped.x,
+            y: clamped.y,
+            width,
+            height,
+            isZoomed: Boolean(isZoomed)
+        };
+        fs.writeFileSync(POSITION_FILE, JSON.stringify(data), 'utf-8');
     } catch (err) {
         console.error('[DevPet] Failed to save pet position:', err);
     }
@@ -91,24 +131,26 @@ function savePosition(x, y, width = 280, height = 300) {
 // --- Window Creation ---
 function createFloatingWindow() {
     if (floatingWindow && !floatingWindow.isDestroyed()) {
+        if (floatingWindow.isMinimized()) floatingWindow.restore();
         floatingWindow.show();
+        floatingWindow.setAlwaysOnTop(true, 'screen-saver');
         floatingWindow.focus();
         return;
     }
 
-    const width = 280;
-    const height = 320;
-    const pos = loadSavedPosition(width, height);
+    const config = loadSavedPositionConfig();
+    isCurrentPetZoomed = config.isZoomed;
 
     floatingWindow = new BrowserWindow({
-        width,
-        height,
-        x: pos.x,
-        y: pos.y,
+        width: config.width,
+        height: config.height,
+        x: config.x,
+        y: config.y,
         frame: false,
         transparent: true,
         alwaysOnTop: true,
         resizable: false,
+        useContentSize: true,
         skipTaskbar: false,
         hasShadow: false,
         backgroundColor: '#00000000',
@@ -123,6 +165,13 @@ function createFloatingWindow() {
     floatingWindow.setAlwaysOnTop(true, 'screen-saver');
     floatingWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
+    // Ensure floating window maintains screen-saver alwaysOnTop level
+    floatingWindow.on('blur', () => {
+        if (floatingWindow && !floatingWindow.isDestroyed()) {
+            floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+        }
+    });
+
     floatingWindow.loadFile(path.join(__dirname, 'floating.html'));
 
     let moveTimeout = null;
@@ -131,7 +180,8 @@ function createFloatingWindow() {
         moveTimeout = setTimeout(() => {
             if (floatingWindow && !floatingWindow.isDestroyed()) {
                 const [x, y] = floatingWindow.getPosition();
-                savePosition(x, y, width, height);
+                const [w, h] = floatingWindow.getSize();
+                savePosition(x, y, w, h, isCurrentPetZoomed);
             }
         }, 300);
     });
@@ -146,6 +196,9 @@ function createOrFocusDashboardWindow() {
         if (dashboardWindow.isMinimized()) dashboardWindow.restore();
         dashboardWindow.show();
         dashboardWindow.focus();
+        if (floatingWindow && !floatingWindow.isDestroyed()) {
+            floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+        }
         return;
     }
 
@@ -168,6 +221,10 @@ function createOrFocusDashboardWindow() {
     dashboardWindow.on('closed', () => {
         dashboardWindow = null;
     });
+
+    if (floatingWindow && !floatingWindow.isDestroyed()) {
+        floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+    }
 }
 
 // --- System Tray ---
@@ -192,8 +249,10 @@ function setupTray() {
                     if (!floatingWindow || floatingWindow.isDestroyed()) {
                         createFloatingWindow();
                     } else {
+                        if (floatingWindow.isMinimized()) floatingWindow.restore();
                         floatingWindow.show();
                         floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+                        floatingWindow.focus();
                     }
                 }
             },
@@ -202,6 +261,32 @@ function setupTray() {
                 click: () => {
                     if (floatingWindow && !floatingWindow.isDestroyed()) {
                         floatingWindow.hide();
+                    }
+                }
+            },
+            {
+                label: 'Toggle Pet Zoom',
+                click: () => {
+                    if (floatingWindow && !floatingWindow.isDestroyed()) {
+                        isCurrentPetZoomed = !isCurrentPetZoomed;
+                        const w = isCurrentPetZoomed ? ZOOMED_WIDTH : COMPACT_WIDTH;
+                        const h = isCurrentPetZoomed ? ZOOMED_HEIGHT : COMPACT_HEIGHT;
+                        const [currX, currY] = floatingWindow.getPosition();
+                        const matchingDisplay = screen.getDisplayMatching({ x: currX, y: currY, width: w, height: h }) || screen.getPrimaryDisplay();
+                        const work = matchingDisplay.workArea;
+
+                        let nextX = currX;
+                        let nextY = currY;
+                        if (nextX + w > work.x + work.width) nextX = work.x + work.width - w;
+                        if (nextY + h > work.y + work.height) nextY = work.y + work.height - h;
+
+                        const clamped = clampToWorkArea(nextX, nextY, w, h);
+                        floatingWindow.setResizable(true);
+                        floatingWindow.setSize(w, h);
+                        floatingWindow.setResizable(false);
+                        floatingWindow.setPosition(clamped.x, clamped.y);
+                        savePosition(clamped.x, clamped.y, w, h, isCurrentPetZoomed);
+                        floatingWindow.webContents.send('zoom-changed', isCurrentPetZoomed);
                     }
                 }
             },
@@ -215,10 +300,12 @@ function setupTray() {
                     if (floatingWindow && !floatingWindow.isDestroyed()) {
                         const primary = screen.getPrimaryDisplay();
                         const work = primary.workArea;
-                        const x = work.x + work.width - 320;
-                        const y = work.y + work.height - 350;
+                        const w = isCurrentPetZoomed ? ZOOMED_WIDTH : COMPACT_WIDTH;
+                        const h = isCurrentPetZoomed ? ZOOMED_HEIGHT : COMPACT_HEIGHT;
+                        const x = work.x + work.width - w - 24;
+                        const y = work.y + work.height - h - 24;
                         floatingWindow.setPosition(x, y);
-                        savePosition(x, y);
+                        savePosition(x, y, w, h, isCurrentPetZoomed);
                     }
                 }
             },
@@ -232,10 +319,13 @@ function setupTray() {
         tray.setToolTip('DevPet (CodeBuddy) Desktop Companion');
         tray.setContextMenu(contextMenu);
         tray.on('double-click', () => {
-            if (floatingWindow && !floatingWindow.isDestroyed()) {
-                floatingWindow.show();
-            } else {
+            if (!floatingWindow || floatingWindow.isDestroyed()) {
                 createFloatingWindow();
+            } else {
+                if (floatingWindow.isMinimized()) floatingWindow.restore();
+                floatingWindow.show();
+                floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+                floatingWindow.focus();
             }
         });
     } catch (err) {
@@ -275,6 +365,61 @@ function setupIPC() {
         }
     });
 
+    ipcMain.handle('toggle-pet-zoom', (event) => {
+        if (!floatingWindow || floatingWindow.isDestroyed()) {
+            return { isZoomed: isCurrentPetZoomed };
+        }
+        if (event.sender !== floatingWindow.webContents) {
+            return { isZoomed: isCurrentPetZoomed };
+        }
+
+        isCurrentPetZoomed = !isCurrentPetZoomed;
+        const targetWidth = isCurrentPetZoomed ? ZOOMED_WIDTH : COMPACT_WIDTH;
+        const targetHeight = isCurrentPetZoomed ? ZOOMED_HEIGHT : COMPACT_HEIGHT;
+
+        const [currX, currY] = floatingWindow.getPosition();
+        const matchingDisplay = screen.getDisplayMatching({ x: currX, y: currY, width: targetWidth, height: targetHeight }) || screen.getPrimaryDisplay();
+        const work = matchingDisplay.workArea;
+
+        let nextX = currX;
+        let nextY = currY;
+        if (nextX + targetWidth > work.x + work.width) {
+            nextX = work.x + work.width - targetWidth;
+        }
+        if (nextY + targetHeight > work.y + work.height) {
+            nextY = work.y + work.height - targetHeight;
+        }
+
+        const clamped = clampToWorkArea(nextX, nextY, targetWidth, targetHeight);
+        floatingWindow.setResizable(true);
+        floatingWindow.setSize(targetWidth, targetHeight);
+        floatingWindow.setResizable(false);
+        floatingWindow.setPosition(clamped.x, clamped.y);
+        savePosition(clamped.x, clamped.y, targetWidth, targetHeight, isCurrentPetZoomed);
+
+        return {
+            isZoomed: isCurrentPetZoomed,
+            width: targetWidth,
+            height: targetHeight
+        };
+    });
+
+    ipcMain.handle('get-pet-zoom', () => {
+        return { isZoomed: isCurrentPetZoomed };
+    });
+
+    ipcMain.on('minimize-pet', () => {
+        if (floatingWindow && !floatingWindow.isDestroyed()) {
+            floatingWindow.hide();
+        }
+    });
+
+    ipcMain.on('close-pet', () => {
+        if (floatingWindow && !floatingWindow.isDestroyed()) {
+            floatingWindow.hide();
+        }
+    });
+
     ipcMain.on('hide-pet', () => {
         if (floatingWindow && !floatingWindow.isDestroyed()) {
             floatingWindow.hide();
@@ -282,10 +427,13 @@ function setupIPC() {
     });
 
     ipcMain.on('show-pet', () => {
-        if (floatingWindow && !floatingWindow.isDestroyed()) {
-            floatingWindow.show();
-        } else {
+        if (!floatingWindow || floatingWindow.isDestroyed()) {
             createFloatingWindow();
+        } else {
+            if (floatingWindow.isMinimized()) floatingWindow.restore();
+            floatingWindow.show();
+            floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+            floatingWindow.focus();
         }
     });
 

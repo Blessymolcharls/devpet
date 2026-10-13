@@ -54,6 +54,47 @@ contextBridge.exposeInMainWorld('devPetDesktop', {
         ipcRenderer.send('close-dashboard');
     },
 
+    toggleZoom: async () => {
+        try {
+            return await ipcRenderer.invoke('toggle-pet-zoom');
+        } catch (err) {
+            console.error('[Preload] toggleZoom error:', err);
+            return { isZoomed: false };
+        }
+    },
+
+    getZoomState: async () => {
+        try {
+            return await ipcRenderer.invoke('get-pet-zoom');
+        } catch (err) {
+            console.error('[Preload] getZoomState error:', err);
+            return { isZoomed: false };
+        }
+    },
+
+    onZoomChanged: (callback) => {
+        if (typeof callback !== 'function') return () => {};
+        const listener = (event, isZoomed) => {
+            try {
+                callback(Boolean(isZoomed));
+            } catch (err) {
+                console.error('[Preload] onZoomChanged callback error:', err);
+            }
+        };
+        ipcRenderer.on('zoom-changed', listener);
+        return () => {
+            ipcRenderer.removeListener('zoom-changed', listener);
+        };
+    },
+
+    minimizePet: () => {
+        ipcRenderer.send('minimize-pet');
+    },
+
+    closePet: () => {
+        ipcRenderer.send('close-pet');
+    },
+
     hidePet: () => {
         ipcRenderer.send('hide-pet');
     },

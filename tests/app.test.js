@@ -26,9 +26,15 @@ class DevPetGameLogic {
                 { id: 'c2', desc: 'Reach Level 5', type: 'levels', target: 5, progress: 1, reward: 100, done: false }
             ],
             cpsProfiles: [],
-            activeProfileId: null
+            activeProfileId: null,
+            hideDashboardPet: false
         };
         this.pomo = { active: false, timeRem: 25 * 60, selectedMin: 25 };
+    }
+
+    toggleDashboardPet() {
+        this.state.hideDashboardPet = !this.state.hideDashboardPet;
+        return this.state.hideDashboardPet;
     }
 
     checkDailyStreak(simulatedTodayStr) {
@@ -737,4 +743,24 @@ test('CPS Legacy migration safely imports existing cps object into cpsProfiles',
     assert.equal(game.state.activeProfileId, migrated.id);
     assert.equal(migrated.displayName, 'LegendCoder#99');
     assert.equal(migrated.github, 'legend');
+});
+
+test('Dashboard pet stage visibility toggle operates cleanly without corrupting pet state', () => {
+    const game = new DevPetGameLogic();
+    assert.equal(game.state.hideDashboardPet, false);
+
+    // Toggle pet stage off
+    const toggledOff = game.toggleDashboardPet();
+    assert.equal(toggledOff, true);
+    assert.equal(game.state.hideDashboardPet, true);
+
+    // Pet progress remains completely intact
+    assert.equal(game.state.level, 1);
+    assert.equal(game.state.currentXp, 0);
+    assert.equal(game.state.coins, 0);
+
+    // Toggle back on
+    const toggledOn = game.toggleDashboardPet();
+    assert.equal(toggledOn, false);
+    assert.equal(game.state.hideDashboardPet, false);
 });

@@ -1,14 +1,14 @@
-/* floating.css - Sleek Cyberpunk Styling for Floating Desktop Companion */
+/* floating.css - Cohesive Compact Cyberpunk Desktop Companion Widget */
 
 :root {
     --color-bg: #0b0d13;
-    --color-panel: rgba(14, 18, 27, 0.92);
+    --color-panel: rgba(11, 15, 23, 0.94);
     --color-primary: #00f0ff;
     --color-accent: #00ff9f;
     --color-warning: #ffb800;
     --color-error: #ff0055;
     --color-text: #e2e8f0;
-    --color-border: rgba(0, 240, 255, 0.4);
+    --color-border: rgba(0, 240, 255, 0.45);
     --font-pixel: 'VT323', monospace;
     --font-ui: 'Inter', -apple-system, sans-serif;
 }
@@ -29,118 +29,100 @@ html, body {
     color: var(--color-text);
 }
 
-.floating-pet-card {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
+/* ONE Cohesive, Compact Desktop Widget Card */
+.floating-widget-card {
+    width: calc(100% - 10px);
+    height: calc(100% - 10px);
+    margin: 5px;
     background: var(--color-panel);
-    border: 1.5px solid var(--color-border);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 16px rgba(0, 240, 255, 0.2);
-    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), 0 0 12px rgba(0, 240, 255, 0.25);
+    backdrop-filter: blur(12px);
     display: flex;
     flex-direction: column;
-    padding: 10px;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    justify-content: space-between;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    position: relative;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.floating-pet-card:hover {
+.floating-widget-card:hover {
     border-color: var(--color-primary);
-    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 240, 255, 0.35);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.85), 0 0 16px rgba(0, 240, 255, 0.35);
 }
 
-/* Dragging Support */
-.drag-bar {
+/* Header & Controls */
+.widget-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 2px 4px 6px 4px;
+    padding-bottom: 4px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     -webkit-app-region: drag;
     cursor: grab;
 }
 
-.drag-bar:active {
+.widget-header:active {
     cursor: grabbing;
+}
+
+.pet-name {
+    font-family: var(--font-pixel);
+    font-size: 1.15rem;
+    letter-spacing: 0.5px;
+    color: var(--color-primary);
+    text-shadow: 0 0 6px rgba(0, 240, 255, 0.4);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.pet-name:hover {
+    color: var(--color-accent);
+}
+
+.top-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
 }
 
 .no-drag {
     -webkit-app-region: no-drag;
 }
 
-.pet-name {
-    font-family: var(--font-pixel);
-    font-size: 1.25rem;
-    letter-spacing: 1px;
-    color: var(--color-primary);
-    text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
-}
-
-.top-controls {
-    display: flex;
-    gap: 4px;
-}
-
 .icon-btn {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: var(--color-text);
     border-radius: 4px;
-    font-size: 0.8rem;
-    padding: 2px 6px;
+    font-size: 0.75rem;
+    padding: 2px 5px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
+    line-height: 1;
 }
 
 .icon-btn:hover {
-    background: rgba(0, 240, 255, 0.2);
+    background: rgba(0, 240, 255, 0.25);
     border-color: var(--color-primary);
     transform: translateY(-1px);
 }
 
+.icon-btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
 .icon-btn.text-error:hover {
-    background: rgba(255, 0, 85, 0.25);
-    border-color: var(--color-error);
-    color: var(--color-error);
+    background: rgba(255, 0, 85, 0.2);
+    border-color: rgba(255, 0, 85, 0.6);
+    color: #ff5577;
+    box-shadow: 0 0 6px rgba(255, 0, 85, 0.25);
 }
 
-/* Dialogue Bubble */
-.floating-bubble {
-    position: absolute;
-    top: 38px;
-    left: 12px;
-    right: 12px;
-    background: rgba(11, 13, 19, 0.95);
-    border: 1px solid var(--color-primary);
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-family: var(--font-pixel);
-    font-size: 1.1rem;
-    color: #fff;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    z-index: 10;
-    animation: fadeIn 0.3s ease;
-}
-
-/* Random Spawn Event */
-.floating-event {
-    position: absolute;
-    top: 40px;
-    right: 14px;
-    background: rgba(255, 184, 0, 0.2);
-    border: 1px solid var(--color-warning);
-    border-radius: 6px;
-    padding: 3px 6px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    z-index: 11;
-    animation: bounce 0.6s infinite alternate;
-}
-
-/* Pet Center Stage */
+/* Pet Character Stage */
 .pet-center-stage {
     flex: 1;
     display: flex;
@@ -148,20 +130,25 @@ html, body {
     justify-content: center;
     align-items: center;
     position: relative;
-    padding: 6px 0;
+    padding: 4px 0;
+    -webkit-app-region: drag;
+    cursor: grab;
+}
+
+.pet-center-stage:active {
+    cursor: grabbing;
 }
 
 .pet-wrapper {
-    width: 100px;
-    height: 100px;
+    width: 76px;
+    height: 76px;
     position: relative;
-    cursor: pointer;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
-    transition: transform 0.2s ease;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .pet-wrapper:hover {
-    transform: scale(1.05);
+    transform: scale(1.06);
 }
 
 .pet-svg {
@@ -180,26 +167,35 @@ html, body {
     animation: float 3s ease-in-out infinite;
 }
 
+.pet-ground-shadow {
+    width: 54px;
+    height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(0, 240, 255, 0.35) 0%, rgba(0, 0, 0, 0.5) 50%, transparent 80%);
+    margin-top: -2px;
+    pointer-events: none;
+}
+
 .sleep-indicator {
     position: absolute;
-    top: 8px;
-    right: 28px;
+    top: 4px;
+    right: 14px;
     font-family: var(--font-pixel);
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: var(--color-accent);
     animation: pulse 1.5s infinite;
 }
 
-/* Status Bar */
-.status-bar {
+/* Stats Row */
+.stats-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 4px;
-    padding: 4px;
-    background: rgba(0, 0, 0, 0.35);
+    padding: 3px 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .stat-pill {
@@ -209,22 +205,24 @@ html, body {
     justify-content: center;
     font-family: var(--font-pixel);
     font-size: 0.95rem;
-    line-height: 1.1;
+    line-height: 1.05;
 }
 
 .pill-label {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.55);
 }
 
 .pill-val {
     font-weight: bold;
 }
 
-/* Actions Row */
+/* Bottom Controls Row */
 .actions-row {
     display: flex;
-    gap: 6px;
+    gap: 4px;
+    width: 100%;
+    align-items: center;
 }
 
 .quick-btn {
@@ -232,11 +230,12 @@ html, body {
     border: none;
     border-radius: 6px;
     font-family: var(--font-pixel);
-    font-size: 1.1rem;
-    padding: 6px 2px;
+    font-size: 1.05rem;
+    padding: 4px 4px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     text-align: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .btn-primary {
@@ -247,43 +246,79 @@ html, body {
 
 .btn-primary:hover {
     background: #60f8ff;
-    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
     transform: translateY(-1px);
 }
 
 .btn-secondary {
     background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     color: var(--color-text);
 }
 
 .btn-secondary:hover {
     border-color: var(--color-warning);
     color: var(--color-warning);
+    box-shadow: 0 0 6px rgba(255, 184, 0, 0.4);
     transform: translateY(-1px);
 }
 
 .btn-action {
-    flex: 0 0 36px;
-    background: rgba(255, 0, 85, 0.15);
-    border: 1px solid rgba(255, 0, 85, 0.3);
+    flex: 0 0 32px;
+    background: rgba(255, 0, 85, 0.18);
+    border: 1px solid rgba(255, 0, 85, 0.35);
     color: var(--color-error);
 }
 
 .btn-action:hover {
     background: rgba(255, 0, 85, 0.35);
+    box-shadow: 0 0 6px rgba(255, 0, 85, 0.5);
     transform: translateY(-1px);
+}
+
+/* Dialogue Bubble */
+.floating-bubble {
+    position: absolute;
+    top: 32px;
+    left: 8px;
+    right: 8px;
+    background: rgba(11, 13, 19, 0.96);
+    border: 1px solid var(--color-primary);
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-family: var(--font-pixel);
+    font-size: 1rem;
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    z-index: 10;
+    animation: fadeIn 0.25s ease;
+}
+
+/* Random Spawn Event */
+.floating-event {
+    position: absolute;
+    top: 32px;
+    right: 10px;
+    background: rgba(255, 184, 0, 0.25);
+    border: 1px solid var(--color-warning);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    z-index: 11;
+    animation: bounce 0.6s infinite alternate;
 }
 
 /* Animations */
 @keyframes float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+    50% { transform: translateY(-4px); }
 }
 
 @keyframes bounce {
     0% { transform: translateY(0); }
-    100% { transform: translateY(-4px); }
+    100% { transform: translateY(-3px); }
 }
 
 @keyframes pulse {
@@ -292,7 +327,7 @@ html, body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
+    from { opacity: 0; transform: translateY(-3px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
@@ -304,3 +339,79 @@ html, body {
 .text-accent { color: var(--color-accent) !important; }
 .text-warning { color: var(--color-warning) !important; }
 .text-error { color: var(--color-error) !important; }
+
+/* --- Zoom Mode: Proportional Enlargement (1.4x) --- */
+.floating-widget-card.zoomed {
+    padding: 12px 14px;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.85), 0 0 18px rgba(0, 240, 255, 0.35);
+}
+
+.floating-widget-card.zoomed .pet-name {
+    font-size: 1.45rem;
+}
+
+.floating-widget-card.zoomed .icon-btn {
+    font-size: 0.95rem;
+    padding: 4px 7px;
+    border-radius: 5px;
+}
+
+.floating-widget-card.zoomed .pet-center-stage {
+    padding: 8px 0;
+}
+
+.floating-widget-card.zoomed .pet-wrapper {
+    width: 108px;
+    height: 108px;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.7));
+}
+
+.floating-widget-card.zoomed .pet-ground-shadow {
+    width: 76px;
+    height: 8px;
+    margin-top: -3px;
+}
+
+.floating-widget-card.zoomed .sleep-indicator {
+    font-size: 1.4rem;
+    top: 6px;
+    right: 20px;
+}
+
+.floating-widget-card.zoomed .stats-row {
+    padding: 5px 8px;
+    gap: 6px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+}
+
+.floating-widget-card.zoomed .stat-pill {
+    font-size: 1.25rem;
+}
+
+.floating-widget-card.zoomed .pill-label {
+    font-size: 0.85rem;
+}
+
+.floating-widget-card.zoomed .actions-row {
+    gap: 6px;
+}
+
+.floating-widget-card.zoomed .quick-btn {
+    font-size: 1.3rem;
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+
+.floating-widget-card.zoomed .floating-bubble {
+    font-size: 1.15rem;
+    max-width: 250px;
+    padding: 6px 12px;
+}
+
+.floating-widget-card.zoomed .floating-event {
+    font-size: 1.2rem;
+    padding: 8px 12px;
+}
+

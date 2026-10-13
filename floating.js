@@ -32,9 +32,11 @@ let pomo = {
 // --- DOM Elements ---
 const dom = {
     root: document.getElementById('floating-pet-root'),
+    petHeaderName: document.getElementById('pet-header-name'),
     btnOpenDash: document.getElementById('btn-open-dash'),
+    btnZoomPet: document.getElementById('btn-zoom-pet'),
     btnMinimizePet: document.getElementById('btn-minimize-pet'),
-    btnCloseApp: document.getElementById('btn-close-app'),
+    btnClosePet: document.getElementById('btn-close-pet') || document.getElementById('btn-close-app'),
     btnQuickTask: document.getElementById('btn-quick-task'),
     btnQuickPomo: document.getElementById('btn-quick-pomo'),
     btnPetInteract: document.getElementById('btn-pet-interact'),
@@ -79,13 +81,23 @@ function getCpsTier(rating) {
 function setupClickThrough() {
     if (!window.devPetDesktop) return;
 
-    // Window margin is transparent; hover on card is interactive
-    dom.root.addEventListener('mouseenter', () => {
-        window.devPetDesktop.setIgnoreMouseEvents(false);
+    let isInteractiveHovered = false;
+
+    window.addEventListener('mousemove', (e) => {
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const isInteractive = !!(target && target.closest('.floating-widget-card'));
+
+        if (isInteractive !== isInteractiveHovered) {
+            isInteractiveHovered = isInteractive;
+            window.devPetDesktop.setIgnoreMouseEvents(!isInteractiveHovered, { forward: true });
+        }
     });
 
-    dom.root.addEventListener('mouseleave', () => {
-        window.devPetDesktop.setIgnoreMouseEvents(true, { forward: true });
+    window.addEventListener('mouseleave', () => {
+        if (isInteractiveHovered) {
+            isInteractiveHovered = false;
+            window.devPetDesktop.setIgnoreMouseEvents(true, { forward: true });
+        }
     });
 }
 
@@ -281,6 +293,28 @@ function updatePomoDisplay() {
     }
 }
 
+// --- Zoom Management ---
+function applyZoomState(isZoomed) {
+    if (!dom.root) return;
+    dom.root.classList.toggle('zoomed', !!isZoomed);
+    if (dom.btnZoomPet) {
+        dom.btnZoomPet.title = isZoomed ? 'Zoom/Restore' : 'Zoom/Restore';
+        dom.btnZoomPet.setAttribute('aria-pressed', isZoomed ? 'true' : 'false');
+        dom.btnZoomPet.textContent = isZoomed ? '🔎' : '🔍';
+    }
+}
+
+async function handleToggleZoom() {
+    if (window.devPetDesktop && window.devPetDesktop.toggleZoom) {
+        const res = await window.devPetDesktop.toggleZoom();
+        applyZoomState(res && res.isZoomed);
+    } else {
+        const isZoomed = !dom.root.classList.contains('zoomed');
+        applyZoomState(isZoomed);
+        try { localStorage.setItem('codebuddy_pet_zoomed', isZoomed ? 'true' : 'false'); } catch (e) {}
+    }
+}
+
 // --- Initialize Floating Companion ---
 async function initFloatingCompanion() {
     setupClickThrough();
@@ -297,6 +331,23 @@ async function initFloatingCompanion() {
             }
         }
 
+        // Check initial zoom state from desktop process
+        if (window.devPetDesktop.getZoomState) {
+            try {
+                const zoomRes = await window.devPetDesktop.getZoomState();
+                if (zoomRes && zoomRes.isZoomed) {
+                    applyZoomState(true);
+                }
+            } catch (e) {}
+        }
+
+        // Listen for zoom changes broadcasted from tray or main
+        if (window.devPetDesktop.onZoomChanged) {
+            window.devPetDesktop.onZoomChanged((isZoomed) => {
+                applyZoomState(isZoomed);
+            });
+        }
+
         // Listen for updates from dashboard window
         window.devPetDesktop.onStateUpdated((newState) => {
             if (newState && typeof newState === 'object') {
@@ -309,26 +360,51 @@ async function initFloatingCompanion() {
         if (saved) {
             try { gameState = { ...gameState, ...JSON.parse(saved) }; } catch(e) {}
         }
+        try {
+            if (localStorage.getItem('codebuddy_pet_zoomed') === 'true') {
+                applyZoomState(true);
+            }
+        } catch (e) {}
     }
 
     renderUI();
 
     // Event Bindings
-    if (dom.btnOpenDash) {
-        dom.btnOpenDash.addEventListener('click', () => {
-            if (window.devPetDesktop) window.devPetDesktop.openDashboard();
-        });
+    if (dom.btnZoomPet) {
+        dom.btnZoomPet.addEventListener('click', handleToggleZoom);
     }
 
     if (dom.btnMinimizePet) {
         dom.btnMinimizePet.addEventListener('click', () => {
-            if (window.devPetDesktop) window.devPetDesktop.hidePet();
+            if (window.devPetDesktop && window.devPetDesktop.minimizePet) {
+                window.devPetDesktop.minimizePet();
+            } else if (window.devPetDesktop && window.devPetDesktop.hidePet) {
+                window.devPetDesktop.hidePet();
+            }
         });
     }
 
-    if (dom.btnCloseApp) {
-        dom.btnCloseApp.addEventListener('click', () => {
-            if (window.devPetDesktop) window.devPetDesktop.quitApp();
+    if (dom.btnClosePet) {
+        dom.btnClosePet.addEventListener('click', () => {
+            if (window.devPetDesktop && window.devPetDesktop.closePet) {
+                window.devPetDesktop.closePet();
+            } else if (window.devPetDesktop && window.devPetDesktop.hidePet) {
+                window.devPetDesktop.hidePet();
+            }
+        });
+    }
+
+    if (dom.petHeaderName) {
+        dom.petHeaderName.addEventListener('click', () => {
+            if (window.devPetDesktop && window.devPetDesktop.openDashboard) {
+                window.devPetDesktop.openDashboard();
+            }
+        });
+    }
+
+    if (dom.btnOpenDash) {
+        dom.btnOpenDash.addEventListener('click', () => {
+            if (window.devPetDesktop) window.devPetDesktop.openDashboard();
         });
     }
 

@@ -220,6 +220,15 @@ h2 { font-size: 1.5rem; color: var(--color-primary); border-bottom: 1px solid va
     grid-template-columns: 320px 1fr 380px;
     height: calc(100vh - 120px);
     padding-bottom: 1rem;
+    transition: grid-template-columns 0.3s ease;
+}
+
+.app-container.dash-pet-hidden-mode {
+    grid-template-columns: 340px 1fr !important;
+}
+
+.pet-stage.dash-pet-hidden {
+    display: none !important;
 }
 
 /* --- Gamified Stats & Progress Bars --- */

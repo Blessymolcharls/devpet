@@ -84,6 +84,7 @@ class CodeBuddy {
             challenges: [],
             theme: 'cyberpunk',
             audioMuted: false,
+            hideDashboardPet: false,
             lastActiveTime: Date.now(),
             cpsProfiles: [],
             activeProfileId: null,
@@ -139,6 +140,7 @@ class CodeBuddy {
         this.initDesktopIntegration();
         this.loadState();
         this.applyTheme();
+        this.updateDashboardPetVisibility();
         this.bindEvents();
         this.initRipples();
         this.initAtmosphere();
@@ -173,10 +175,13 @@ class CodeBuddy {
                 if (desktopState && typeof desktopState === 'object') {
                     this.mergeState(desktopState);
                     this.updateUI(true);
+                    this.updateDashboardPetVisibility();
                     this.renderTasks();
                     this.renderCps();
                     this.renderShop();
                     this.renderInventory();
+                    this.updateAccessoriesUI();
+                    this.applyEquippedBackground();
                 }
             }).catch(e => console.error("Initial desktop state fetch error:", e));
 
@@ -185,10 +190,13 @@ class CodeBuddy {
                 if (incomingState && typeof incomingState === 'object') {
                     this.mergeState(incomingState);
                     this.updateUI(true);
+                    this.updateDashboardPetVisibility();
                     this.renderTasks();
                     this.renderCps();
                     this.renderShop();
                     this.renderInventory();
+                    this.updateAccessoriesUI();
+                    this.applyEquippedBackground();
                 }
             });
         } else {
@@ -216,6 +224,9 @@ class CodeBuddy {
                 ...(parsed.cps || {})
             }
         };
+        if (parsed.hideDashboardPet !== undefined) {
+            this.state.hideDashboardPet = !!parsed.hideDashboardPet;
+        }
         this.sanitizeState();
     }
 
@@ -251,6 +262,7 @@ class CodeBuddy {
         this.state.streak = Math.max(0, parseInt(this.state.streak, 10) || 0);
         this.state.longestStreak = Math.max(this.state.streak, parseInt(this.state.longestStreak, 10) || 0);
         this.state.totalTasksCompleted = Math.max(0, parseInt(this.state.totalTasksCompleted, 10) || 0);
+        this.state.hideDashboardPet = !!this.state.hideDashboardPet;
 
         if (!Array.isArray(this.state.tasks)) {
             this.state.tasks = [];
@@ -335,6 +347,9 @@ class CodeBuddy {
             themeSwitcher: document.getElementById('theme-switcher'),
             btnMute: document.getElementById('btn-mute'),
             envModeBadge: document.getElementById('env-mode-badge'),
+            btnToggleDashPet: document.getElementById('btn-toggle-dash-pet'),
+            petStage: document.querySelector('.pet-stage'),
+            appContainer: document.getElementById('app-container'),
             btnFloating: document.getElementById('btn-floating'),
             btnUnfloat: document.getElementById('btnUnfloat') || document.getElementById('btn-unfloat'),
             btnFwTask: document.getElementById('btn-fw-task'),
@@ -497,6 +512,36 @@ class CodeBuddy {
             this.dom.btnFwTask.addEventListener('click', (e) => {
                 audio.play('click');
                 this.completeTask(e);
+            });
+        }
+
+        if (this.dom.btnToggleDashPet) {
+            this.dom.btnToggleDashPet.addEventListener('click', () => {
+                audio.play('click');
+                this.state.hideDashboardPet = !this.state.hideDashboardPet;
+                this.updateDashboardPetVisibility();
+                this.saveState();
+            });
+        }
+
+        if (this.dom.btnFloating) {
+            this.dom.btnFloating.addEventListener('click', () => {
+                audio.play('click');
+                if (window.devPetDesktop) {
+                    window.devPetDesktop.showPet();
+                    this.showToast('success', 'Desktop Pet companion summoned to top! 🐾');
+                } else if (this.dom.floatingWidget) {
+                    this.dom.floatingWidget.classList.toggle('hidden-by-default');
+                }
+            });
+        }
+
+        if (this.dom.btnUnfloat) {
+            this.dom.btnUnfloat.addEventListener('click', () => {
+                audio.play('click');
+                if (this.dom.floatingWidget) {
+                    this.dom.floatingWidget.classList.add('hidden-by-default');
+                }
             });
         }
 
@@ -2469,6 +2514,21 @@ class CodeBuddy {
         if (anyUnlocked) {
             this.saveState();
             this.renderAchievements();
+        }
+    }
+
+    // --- Dashboard Pet Visibility & Configuration ---
+    updateDashboardPetVisibility() {
+        const isHidden = !!this.state.hideDashboardPet;
+        if (this.dom.petStage) {
+            this.dom.petStage.classList.toggle('dash-pet-hidden', isHidden);
+        }
+        if (this.dom.appContainer) {
+            this.dom.appContainer.classList.toggle('dash-pet-hidden-mode', isHidden);
+        }
+        if (this.dom.btnToggleDashPet) {
+            this.dom.btnToggleDashPet.textContent = isHidden ? 'PET STAGE: OFF' : 'PET STAGE: ON';
+            this.dom.btnToggleDashPet.classList.toggle('text-muted', isHidden);
         }
     }
 
