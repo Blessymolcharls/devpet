@@ -1,4 +1,4 @@
-// script.js - CodeBuddy State & Game Logic (Refactored & Verified)
+// script.js - CodeBuddy State & Game Logic (DevPet 2.0 Desktop Companion)
 
 // --- Audio Synthesis Engine ---
 class SynthEngine {
@@ -75,6 +75,7 @@ class CodeBuddy {
             longestStreak: 0,
             lastTaskDate: null,
             totalTasksCompleted: 0,
+            tasks: [],
             unlockedAchievements: [],
             equippedAccessories: { hat: false, glasses: false, crown: false, bg: null },
             shopUnlocked: ['acc-hat', 'acc-glasses', 'acc-crown'],
@@ -83,7 +84,19 @@ class CodeBuddy {
             challenges: [],
             theme: 'cyberpunk',
             audioMuted: false,
-            lastActiveTime: Date.now()
+            lastActiveTime: Date.now(),
+            cpsProfiles: [],
+            activeProfileId: null,
+            cps: {
+                handle: 'DevCoder#404',
+                title: 'Code Apprentice',
+                specialty: 'Full-Stack Developer',
+                bio: 'Coding alongside my floating desktop companion.',
+                github: '',
+                leetcode: '',
+                codeforces: '',
+                badges: ['cps_novice']
+            }
         };
 
         this.xpPerLevel = 100;
@@ -105,12 +118,26 @@ class CodeBuddy {
         this.pomo = { active: false, timeRem: 25 * 60, selectedMin: 25 };
         this.canvasAccentColor = '#00F0FF';
 
+        // Task UI state
+        this.taskFilter = 'all';
+        this.taskSort = 'created-desc';
+        this.editingTaskId = null;
+        this.deletingTaskId = null;
+
+        // CPS UI state
+        this.activeCpsSubTab = 'overview';
+        this.cpsLeaderboardSort = 'rating';
+        this.editingProfileId = null;
+        this.deletingProfileId = null;
+        this.selectedCpsAvatar = '🤖';
+
         this.init();
     }
 
-    init() {
-        this.loadState();
+    async init() {
         this.cacheDOM();
+        this.initDesktopIntegration();
+        this.loadState();
         this.applyTheme();
         this.bindEvents();
         this.initRipples();
@@ -119,7 +146,10 @@ class CodeBuddy {
         this.checkDailyStreak();
         this.generateChallenges();
         this.renderAchievements();
+        this.renderTasks();
         this.renderShop();
+        this.renderInventory();
+        this.renderCps();
         this.renderCollectibles();
 
         this.updateUI(true);
@@ -129,53 +159,77 @@ class CodeBuddy {
         this.setPetMood('idle');
     }
 
+    // --- Desktop Overlay & IPC Synchronization ---
+    initDesktopIntegration() {
+        if (window.devPetDesktop) {
+            if (this.dom.envModeBadge) {
+                this.dom.envModeBadge.textContent = 'DESKTOP COMPANION ACTIVE';
+                this.dom.envModeBadge.style.borderColor = 'var(--color-accent)';
+                this.dom.envModeBadge.style.color = 'var(--color-accent)';
+            }
+
+            // Sync initial state from desktop main process
+            window.devPetDesktop.getInitialState().then(desktopState => {
+                if (desktopState && typeof desktopState === 'object') {
+                    this.mergeState(desktopState);
+                    this.updateUI(true);
+                    this.renderTasks();
+                    this.renderCps();
+                    this.renderShop();
+                    this.renderInventory();
+                }
+            }).catch(e => console.error("Initial desktop state fetch error:", e));
+
+            // Listen for state synchronization broadcasted by floating pet
+            window.devPetDesktop.onStateUpdated(incomingState => {
+                if (incomingState && typeof incomingState === 'object') {
+                    this.mergeState(incomingState);
+                    this.updateUI(true);
+                    this.renderTasks();
+                    this.renderCps();
+                    this.renderShop();
+                    this.renderInventory();
+                }
+            });
+        } else {
+            if (this.dom.envModeBadge) {
+                this.dom.envModeBadge.textContent = 'WEB BROWSER MODE';
+            }
+        }
+    }
+
+    mergeState(parsed) {
+        if (!parsed || typeof parsed !== 'object') return;
+        this.state = {
+            ...this.state,
+            ...parsed,
+            equippedAccessories: {
+                ...this.state.equippedAccessories,
+                ...(parsed.equippedAccessories || {})
+            },
+            stats: {
+                ...this.state.stats,
+                ...(parsed.stats || {})
+            },
+            cps: {
+                ...this.state.cps,
+                ...(parsed.cps || {})
+            }
+        };
+        this.sanitizeState();
+    }
+
     loadState() {
         const saved = localStorage.getItem(this.storageKey);
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                if (parsed && typeof parsed === 'object') {
-                    this.state = {
-                        ...this.state,
-                        ...parsed,
-                        equippedAccessories: {
-                            ...this.state.equippedAccessories,
-                            ...(parsed.equippedAccessories || {})
-                        },
-                        stats: {
-                            ...this.state.stats,
-                            ...(parsed.stats || {})
-                        }
-                    };
-                }
+                this.mergeState(parsed);
             } catch (e) {
                 console.error("Save load failed, using defaults", e);
             }
         }
-
-        // Validate and sanitize state bounds
-        this.state.level = Math.max(1, parseInt(this.state.level, 10) || 1);
-        this.state.currentXp = Math.max(0, parseInt(this.state.currentXp, 10) || 0);
-        this.state.currentHappiness = Math.min(100, Math.max(0, parseFloat(this.state.currentHappiness) || 100));
-        this.state.coins = Math.max(0, parseInt(this.state.coins, 10) || 0);
-        this.state.streak = Math.max(0, parseInt(this.state.streak, 10) || 0);
-        this.state.longestStreak = Math.max(this.state.streak, parseInt(this.state.longestStreak, 10) || 0);
-        this.state.totalTasksCompleted = Math.max(0, parseInt(this.state.totalTasksCompleted, 10) || 0);
-
-        if (!Array.isArray(this.state.shopUnlocked)) {
-            this.state.shopUnlocked = ['acc-hat', 'acc-glasses', 'acc-crown'];
-        }
-        if (!Array.isArray(this.state.collectibles)) {
-            this.state.collectibles = [];
-        }
-        if (!Array.isArray(this.state.challenges)) {
-            this.state.challenges = [];
-        }
-        if (!Array.isArray(this.state.unlockedAchievements)) {
-            this.state.unlockedAchievements = [];
-        }
-
-        audio.muted = !!this.state.audioMuted;
+        this.sanitizeState();
 
         // Offline decay calculation
         if (this.state.lastActiveTime) {
@@ -189,6 +243,79 @@ class CodeBuddy {
         this.saveState();
     }
 
+    sanitizeState() {
+        this.state.level = Math.max(1, parseInt(this.state.level, 10) || 1);
+        this.state.currentXp = Math.max(0, parseInt(this.state.currentXp, 10) || 0);
+        this.state.currentHappiness = Math.min(100, Math.max(0, parseFloat(this.state.currentHappiness) || 100));
+        this.state.coins = Math.max(0, parseInt(this.state.coins, 10) || 0);
+        this.state.streak = Math.max(0, parseInt(this.state.streak, 10) || 0);
+        this.state.longestStreak = Math.max(this.state.streak, parseInt(this.state.longestStreak, 10) || 0);
+        this.state.totalTasksCompleted = Math.max(0, parseInt(this.state.totalTasksCompleted, 10) || 0);
+
+        if (!Array.isArray(this.state.tasks)) {
+            this.state.tasks = [];
+        }
+        if (!Array.isArray(this.state.shopUnlocked)) {
+            this.state.shopUnlocked = ['acc-hat', 'acc-glasses', 'acc-crown'];
+        }
+        if (!Array.isArray(this.state.collectibles)) {
+            this.state.collectibles = [];
+        }
+        if (!Array.isArray(this.state.challenges)) {
+            this.state.challenges = [];
+        }
+        if (!Array.isArray(this.state.unlockedAchievements)) {
+            this.state.unlockedAchievements = [];
+        }
+        if (!Array.isArray(this.state.cpsProfiles)) {
+            this.state.cpsProfiles = [];
+        }
+
+        // Migrate legacy single cps object if no profiles exist
+        if (this.state.cpsProfiles.length === 0 && this.state.cps && typeof this.state.cps === 'object' && this.state.cps.handle) {
+            const sanitizedUser = (this.state.cps.handle || 'devcoder').replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 20);
+            const profile = {
+                id: 'prof_default',
+                username: sanitizedUser.length >= 3 ? sanitizedUser : 'devcoder',
+                displayName: this.state.cps.handle || 'DevCoder',
+                avatar: '🤖',
+                bio: this.state.cps.bio || 'Coding alongside my floating desktop companion.',
+                specialty: this.state.cps.specialty || 'Full-Stack Developer',
+                github: this.state.cps.github || '',
+                leetcode: this.state.cps.leetcode || '',
+                codeforces: this.state.cps.codeforces || '',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            this.state.cpsProfiles.push(profile);
+            this.state.activeProfileId = profile.id;
+        }
+
+        // Resolve active profile ID
+        if (this.state.cpsProfiles.length > 0) {
+            if (!this.state.activeProfileId || !this.state.cpsProfiles.some(p => p.id === this.state.activeProfileId)) {
+                this.state.activeProfileId = this.state.cpsProfiles[0].id;
+            }
+        } else {
+            this.state.activeProfileId = null;
+        }
+
+        if (!this.state.cps || typeof this.state.cps !== 'object') {
+            this.state.cps = {
+                handle: 'DevCoder#404',
+                title: 'Code Apprentice',
+                specialty: 'Full-Stack Developer',
+                bio: 'Coding alongside my floating desktop companion.',
+                github: '',
+                leetcode: '',
+                codeforces: '',
+                badges: ['cps_novice']
+            };
+        }
+
+        audio.muted = !!this.state.audioMuted;
+    }
+
     saveState() {
         this.state.lastActiveTime = Date.now();
         try {
@@ -196,12 +323,18 @@ class CodeBuddy {
         } catch (e) {
             console.error("Failed to save state to localStorage", e);
         }
+
+        // Dual sync with Electron main process
+        if (window.devPetDesktop) {
+            window.devPetDesktop.saveState(this.state).catch(() => {});
+        }
     }
 
     cacheDOM() {
         this.dom = {
             themeSwitcher: document.getElementById('theme-switcher'),
             btnMute: document.getElementById('btn-mute'),
+            envModeBadge: document.getElementById('env-mode-badge'),
             btnFloating: document.getElementById('btn-floating'),
             btnUnfloat: document.getElementById('btnUnfloat') || document.getElementById('btn-unfloat'),
             btnFwTask: document.getElementById('btn-fw-task'),
@@ -220,6 +353,7 @@ class CodeBuddy {
             happinessBar: document.getElementById('happiness-bar'),
             happinessContainer: document.getElementById('happiness-container'),
             coinsDisplay: document.getElementById('coins-display'),
+            shopCoinsDisplay: document.getElementById('shop-coins-display'),
             streakDisplay: document.getElementById('streak-display'),
             longestStreakDisplay: document.getElementById('longest-streak-display'),
             totalTasksDisplay: document.getElementById('total-tasks-display'),
@@ -229,6 +363,11 @@ class CodeBuddy {
             pomoStart: document.getElementById('btn-pomo-start'),
             pomoStop: document.getElementById('btn-pomo-stop'),
             btnTask: document.getElementById('btn-task'),
+            btnAddTaskOpen: document.getElementById('btn-add-task-open'),
+            btnAddTaskTab: document.getElementById('btn-add-task-tab'),
+            tasksList: document.getElementById('tasks-list'),
+            taskSortSelect: document.getElementById('task-sort-select'),
+            filterChips: document.querySelectorAll('.filter-chip'),
             petContainer: document.getElementById('pet-container'),
             mouth: document.getElementById('mouth'),
             particleContainer: document.getElementById('particle-container'),
@@ -262,12 +401,91 @@ class CodeBuddy {
             modalOverlay: document.getElementById('modal-overlay'),
             modalLevel: document.getElementById('modal-level'),
             btnCloseModal: document.getElementById('btn-close-modal'),
+            // Task Modal
+            taskModalOverlay: document.getElementById('task-modal-overlay'),
+            taskModalHeading: document.getElementById('task-modal-heading'),
+            taskForm: document.getElementById('task-form'),
+            taskTitleInput: document.getElementById('task-title-input'),
+            taskTitleError: document.getElementById('task-title-error'),
+            taskDescInput: document.getElementById('task-desc-input'),
+            taskPrioritySelect: document.getElementById('task-priority-select'),
+            taskCategorySelect: document.getElementById('task-category-select'),
+            taskDueInput: document.getElementById('task-due-input'),
+            taskDurationInput: document.getElementById('task-duration-input'),
+            btnCancelTask: document.getElementById('btn-cancel-task'),
+            // Delete Modal
+            deleteModalOverlay: document.getElementById('delete-modal-overlay'),
+            btnCancelDelete: document.getElementById('btn-cancel-delete'),
+            btnConfirmDelete: document.getElementById('btn-confirm-delete'),
+            // CPS Views, Toolbar & Navigation
+            cpsEmptyView: document.getElementById('cps-empty-view'),
+            cpsActiveView: document.getElementById('cps-active-view'),
+            btnCpsCreateFirst: document.getElementById('btn-cps-create-first'),
+            cpsProfileSelect: document.getElementById('cps-profile-select'),
+            btnCpsNewProfile: document.getElementById('btn-cps-new-profile'),
+            btnEditCps: document.getElementById('btn-edit-cps'),
+            btnDeleteCps: document.getElementById('btn-delete-cps'),
+            cpsSubnavBtns: document.querySelectorAll('.cps-subnav-btn'),
+            cpsSubviews: document.querySelectorAll('.cps-subview'),
+            // CPS Overview Elements
+            cpsAvatarDisplay: document.getElementById('cps-avatar-display'),
+            cpsNameDisplay: document.getElementById('cps-name-display'),
+            cpsUsernameDisplay: document.getElementById('cps-username-display'),
+            cpsTitleDisplay: document.getElementById('cps-title-display'),
+            cpsSpecialtyDisplay: document.getElementById('cps-specialty-display'),
+            cpsRatingDisplay: document.getElementById('cps-rating-display'),
+            cpsCurrentTierName: document.getElementById('cps-current-tier-name'),
+            cpsTierEmblem: document.getElementById('cps-tier-emblem'),
+            cpsNextTierName: document.getElementById('cps-next-tier-name'),
+            cpsTierProgressBar: document.getElementById('cps-tier-progress-bar'),
+            cpsBioDisplay: document.getElementById('cps-bio-display'),
+            cpsGithubLink: document.getElementById('cps-github-link'),
+            cpsLeetcodeLink: document.getElementById('cps-leetcode-link'),
+            cpsCodeforcesLink: document.getElementById('cps-codeforces-link'),
+            cpsUidDisplay: document.getElementById('cps-uid-display'),
+            // CPS Statistics & Records
+            cpsStatTasks: document.getElementById('cps-stat-tasks'),
+            cpsStatTotalXp: document.getElementById('cps-stat-total-xp'),
+            cpsStatTotalCoins: document.getElementById('cps-stat-total-coins'),
+            cpsStatFocusHrs: document.getElementById('cps-stat-focus-hrs'),
+            cpsStatCurrStreak: document.getElementById('cps-stat-curr-streak'),
+            cpsStatLevel: document.getElementById('cps-stat-level'),
+            cpsStatHappiness: document.getElementById('cps-stat-happiness'),
+            cpsStatRatingCalc: document.getElementById('cps-stat-rating-calc'),
+            cpsStatBestStreak: document.getElementById('cps-stat-best-streak'),
+            cpsStatAchCount: document.getElementById('cps-stat-ach-count'),
+            cpsStatFirstTask: document.getElementById('cps-stat-first-task'),
+            // CPS Local Leaderboard
+            leaderboardSortSelect: document.getElementById('leaderboard-sort-select'),
+            leaderboardList: document.getElementById('leaderboard-list'),
+            // CPS Challenges
+            competitiveChallengesList: document.getElementById('competitive-challenges-list'),
+            // CPS Modal Elements
+            cpsModalOverlay: document.getElementById('cps-modal-overlay'),
+            cpsModalHeading: document.getElementById('cps-modal-heading'),
+            cpsForm: document.getElementById('cps-form'),
+            cpsNameInput: document.getElementById('cps-name-input'),
+            cpsNameError: document.getElementById('cps-name-error'),
+            cpsUsernameInput: document.getElementById('cps-username-input'),
+            cpsUsernameError: document.getElementById('cps-username-error'),
+            avatarOptBtns: document.querySelectorAll('.avatar-opt-btn'),
+            cpsSpecialtyInput: document.getElementById('cps-specialty-input'),
+            cpsBioInput: document.getElementById('cps-bio-input'),
+            cpsGithubInput: document.getElementById('cps-github-input'),
+            cpsLeetcodeInput: document.getElementById('cps-leetcode-input'),
+            cpsCodeforcesInput: document.getElementById('cps-codeforces-input'),
+            btnCancelCps: document.getElementById('btn-cancel-cps'),
+            // CPS Delete Modal
+            cpsDeleteModalOverlay: document.getElementById('cps-delete-modal-overlay'),
+            btnCancelDeleteCps: document.getElementById('btn-cancel-delete-cps'),
+            btnConfirmDeleteCps: document.getElementById('btn-confirm-delete-cps'),
             toastContainer: document.getElementById('toast-container'),
             canvas: document.getElementById('pet-atmosphere')
         };
     }
 
     bindEvents() {
+        // Quick complete task button
         if (this.dom.btnTask) {
             this.dom.btnTask.addEventListener('click', (e) => {
                 audio.play('click');
@@ -282,15 +500,192 @@ class CodeBuddy {
             });
         }
 
+        // Add task modal triggers
+        if (this.dom.btnAddTaskOpen) {
+            this.dom.btnAddTaskOpen.addEventListener('click', () => {
+                audio.play('click');
+                this.openTaskModal();
+            });
+        }
+        if (this.dom.btnAddTaskTab) {
+            this.dom.btnAddTaskTab.addEventListener('click', () => {
+                audio.play('click');
+                this.openTaskModal();
+            });
+        }
+
+        // Task Form Submission & Cancel
+        if (this.dom.taskForm) {
+            this.dom.taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveTaskForm();
+            });
+        }
+        if (this.dom.btnCancelTask) {
+            this.dom.btnCancelTask.addEventListener('click', () => {
+                audio.play('click');
+                this.closeTaskModal();
+            });
+        }
+
+        // Task filter chips & sort select
+        if (this.dom.filterChips) {
+            this.dom.filterChips.forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    audio.play('click');
+                    this.dom.filterChips.forEach(c => c.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    this.taskFilter = e.currentTarget.getAttribute('data-filter') || 'all';
+                    this.renderTasks();
+                });
+            });
+        }
+        if (this.dom.taskSortSelect) {
+            this.dom.taskSortSelect.addEventListener('change', (e) => {
+                audio.play('click');
+                this.taskSort = e.target.value;
+                this.renderTasks();
+            });
+        }
+
+        // Delete Task Confirmation Modal
+        if (this.dom.btnCancelDelete) {
+            this.dom.btnCancelDelete.addEventListener('click', () => {
+                audio.play('click');
+                this.closeDeleteModal();
+            });
+        }
+        if (this.dom.btnConfirmDelete) {
+            this.dom.btnConfirmDelete.addEventListener('click', () => {
+                audio.play('click');
+                if (this.deletingTaskId) {
+                    this.deleteTask(this.deletingTaskId);
+                }
+                this.closeDeleteModal();
+            });
+        }
+
+        // CPS Profile Management & Toolbar
+        if (this.dom.btnCpsCreateFirst) {
+            this.dom.btnCpsCreateFirst.addEventListener('click', () => {
+                audio.play('click');
+                this.openCpsModal();
+            });
+        }
+        if (this.dom.btnCpsNewProfile) {
+            this.dom.btnCpsNewProfile.addEventListener('click', () => {
+                audio.play('click');
+                this.openCpsModal();
+            });
+        }
+        if (this.dom.btnEditCps) {
+            this.dom.btnEditCps.addEventListener('click', () => {
+                audio.play('click');
+                const active = this.getActiveCpsProfile();
+                this.openCpsModal(active);
+            });
+        }
+        if (this.dom.btnDeleteCps) {
+            this.dom.btnDeleteCps.addEventListener('click', () => {
+                audio.play('click');
+                if (this.state.activeProfileId) {
+                    this.openDeleteCpsModal(this.state.activeProfileId);
+                }
+            });
+        }
+        if (this.dom.cpsProfileSelect) {
+            this.dom.cpsProfileSelect.addEventListener('change', (e) => {
+                audio.play('click');
+                this.switchActiveCpsProfile(e.target.value);
+            });
+        }
+
+        // CPS Sub-Navigation
+        if (this.dom.cpsSubnavBtns) {
+            this.dom.cpsSubnavBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    audio.play('click');
+                    const sub = e.currentTarget.getAttribute('data-cps-sub');
+                    this.switchCpsSubTab(sub);
+                });
+            });
+        }
+
+        // Leaderboard Sort
+        if (this.dom.leaderboardSortSelect) {
+            this.dom.leaderboardSortSelect.addEventListener('change', (e) => {
+                audio.play('click');
+                this.cpsLeaderboardSort = e.target.value;
+                this.renderCpsLeaderboard();
+            });
+        }
+
+        // Avatar Picker in CPS Modal
+        if (this.dom.avatarOptBtns) {
+            this.dom.avatarOptBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    audio.play('click');
+                    this.dom.avatarOptBtns.forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    this.selectedCpsAvatar = e.currentTarget.getAttribute('data-avatar') || '🤖';
+                });
+            });
+        }
+
+        // CPS Form Submission & Cancel
+        if (this.dom.cpsForm) {
+            this.dom.cpsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveCpsForm();
+            });
+        }
+        if (this.dom.btnCancelCps) {
+            this.dom.btnCancelCps.addEventListener('click', () => {
+                audio.play('click');
+                this.closeCpsModal();
+            });
+        }
+
+        // CPS Delete Confirmation
+        if (this.dom.btnCancelDeleteCps) {
+            this.dom.btnCancelDeleteCps.addEventListener('click', () => {
+                audio.play('click');
+                this.closeDeleteCpsModal();
+            });
+        }
+        if (this.dom.btnConfirmDeleteCps) {
+            this.dom.btnConfirmDeleteCps.addEventListener('click', () => {
+                audio.play('click');
+                if (this.deletingProfileId) {
+                    this.confirmDeleteCps();
+                }
+            });
+        }
+
+        // Activity resets
         document.addEventListener('click', () => {
             this.resetSleepTimer();
             if (this.isSleeping) this.wakeUp();
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.dom.modalOverlay && !this.dom.modalOverlay.classList.contains('hidden')) {
-                this.dom.modalOverlay.classList.add('hidden');
-                audio.play('click');
+            if (e.key === 'Escape') {
+                if (this.dom.modalOverlay && !this.dom.modalOverlay.classList.contains('hidden')) {
+                    this.dom.modalOverlay.classList.add('hidden');
+                    audio.play('click');
+                }
+                if (this.dom.taskModalOverlay && !this.dom.taskModalOverlay.classList.contains('hidden')) {
+                    this.closeTaskModal();
+                }
+                if (this.dom.cpsModalOverlay && !this.dom.cpsModalOverlay.classList.contains('hidden')) {
+                    this.closeCpsModal();
+                }
+                if (this.dom.cpsDeleteModalOverlay && !this.dom.cpsDeleteModalOverlay.classList.contains('hidden')) {
+                    this.closeDeleteCpsModal();
+                }
+                if (this.dom.deleteModalOverlay && !this.dom.deleteModalOverlay.classList.contains('hidden')) {
+                    this.closeDeleteModal();
+                }
             }
         });
 
@@ -321,7 +716,7 @@ class CodeBuddy {
         if (this.dom.pomoStart) this.dom.pomoStart.addEventListener('click', () => this.startPomo());
         if (this.dom.pomoStop) this.dom.pomoStop.addEventListener('click', () => this.stopPomo());
 
-        // Navigation controls
+        // Theme Switcher & Mute
         if (this.dom.themeSwitcher) {
             this.dom.themeSwitcher.addEventListener('change', (e) => {
                 this.state.theme = e.target.value;
@@ -345,7 +740,6 @@ class CodeBuddy {
 
         if (this.dom.btnImport) {
             this.dom.btnImport.addEventListener('change', (e) => this.importSave(e));
-            // Keyboard accessibility for import label wrapper
             const importLabel = this.dom.btnImport.parentElement;
             if (importLabel) {
                 importLabel.addEventListener('keydown', (e) => {
@@ -366,10 +760,17 @@ class CodeBuddy {
             });
         }
 
+        // Float Mode Button
         if (this.dom.btnFloating) {
             this.dom.btnFloating.addEventListener('click', () => {
-                document.body.classList.add('floating-active');
                 audio.play('click');
+                if (window.devPetDesktop) {
+                    window.devPetDesktop.showPet();
+                    this.showToast('info', 'Desktop Pet brought to front! 🐾');
+                } else {
+                    document.body.classList.add('floating-active');
+                    this.showToast('info', 'Browser mini widget active');
+                }
             });
         }
 
@@ -392,10 +793,10 @@ class CodeBuddy {
         });
     }
 
-    // --- Micro-Interactions ---
+    // --- Micro-Interactions & FX ---
     initRipples() {
         document.addEventListener('click', (e) => {
-            const btn = e.target.closest('button, .retro-button, .toggle-btn');
+            const btn = e.target.closest('button, .retro-button, .toggle-btn, .filter-chip');
             if (btn) {
                 const rect = btn.getBoundingClientRect();
                 const ripple = document.createElement('span');
@@ -498,7 +899,7 @@ class CodeBuddy {
         if (!this.dom.toastContainer) return;
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        const icons = { success: '✓', warning: '⚠️', achievement: '🏆', error: '✕' };
+        const icons = { success: '✓', warning: '⚠️', achievement: '🏆', error: '✕', info: 'ℹ' };
         toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ'}</span> <div>${message}</div>`;
         this.dom.toastContainer.appendChild(toast);
         if (type === 'achievement') this.spawnConfetti();
@@ -543,7 +944,7 @@ class CodeBuddy {
         }
     }
 
-    // --- Daily Streak Calculation (Deterministic & Bug-Free) ---
+    // --- Daily Streak Calculation ---
     checkDailyStreak() {
         const todayStr = new Date().toISOString().split('T')[0];
         if (!this.state.lastTaskDate) return;
@@ -553,7 +954,6 @@ class CodeBuddy {
         const todayDate = new Date(todayStr + 'T00:00:00');
         const diffDays = Math.round((todayDate - lastDate) / 86400000);
 
-        // If more than 1 day skipped, streak was broken
         if (diffDays > 1) {
             if (this.state.streak > 0) {
                 this.state.streak = 0;
@@ -563,7 +963,8 @@ class CodeBuddy {
         }
     }
 
-    completeTask(e) {
+    // --- Task Rewards & Idempotency ---
+    awardTaskReward(e) {
         const todayStr = new Date().toISOString().split('T')[0];
 
         // Process daily streak safely
@@ -609,7 +1010,28 @@ class CodeBuddy {
         this.checkAchievements();
         this.updateChallengeProgress('tasks', 1);
         this.updateUI(false, { oldXp, oldCoins, oldTasks });
+        this.renderCps();
         this.saveState();
+    }
+
+    // Quick complete task button handler
+    completeTask(e) {
+        // Find first active task in task list
+        const activeTask = this.state.tasks.find(t => !t.completed);
+        if (activeTask) {
+            activeTask.completed = true;
+            activeTask.completedAt = new Date().toISOString();
+            if (!activeTask.rewardClaimed) {
+                activeTask.rewardClaimed = true;
+                this.awardTaskReward(e);
+                this.showToast('success', `Task completed: "${activeTask.title}"! 🎉`);
+            }
+            this.renderTasks();
+        } else {
+            // General quick coding task
+            this.awardTaskReward(e);
+            this.showToast('success', 'Logged coding task progress! ✨');
+        }
     }
 
     levelUp() {
@@ -623,14 +1045,860 @@ class CodeBuddy {
         this.updateEvolution();
         audio.play('level');
         this.updateChallengeProgress('levels', 1);
+        this.renderCps();
     }
 
     updateEvolution() {
-        // Safe class update: remove only evolution classes without destroying active mood classes!
         this.dom.petContainer.classList.remove('evo-junior', 'evo-advanced', 'evo-legendary');
         if (this.state.level >= 50) this.dom.petContainer.classList.add('evo-legendary');
         else if (this.state.level >= 30) this.dom.petContainer.classList.add('evo-advanced');
         else if (this.state.level >= 10) this.dom.petContainer.classList.add('evo-junior');
+    }
+
+    // --- Task Management (CRUD, Validation & Filtering) ---
+    renderTasks() {
+        if (!this.dom.tasksList) return;
+        this.dom.tasksList.innerHTML = '';
+
+        let filtered = [...this.state.tasks];
+
+        // Filter
+        if (this.taskFilter === 'active') {
+            filtered = filtered.filter(t => !t.completed);
+        } else if (this.taskFilter === 'completed') {
+            filtered = filtered.filter(t => t.completed);
+        } else if (this.taskFilter === 'high') {
+            filtered = filtered.filter(t => t.priority === 'high');
+        }
+
+        // Sort
+        filtered.sort((a, b) => {
+            if (this.taskSort === 'created-desc') {
+                return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+            } else if (this.taskSort === 'created-asc') {
+                return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+            } else if (this.taskSort === 'priority-desc') {
+                const pWeights = { high: 3, medium: 2, low: 1 };
+                return (pWeights[b.priority] || 0) - (pWeights[a.priority] || 0);
+            } else if (this.taskSort === 'due-date-asc') {
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return new Date(a.dueDate) - new Date(b.dueDate);
+            }
+            return 0;
+        });
+
+        if (filtered.length === 0) {
+            this.dom.tasksList.innerHTML = `
+                <div class="tasks-empty-state">
+                    <p>No tasks found in this view.</p>
+                    <button id="btn-empty-add-task" class="toggle-btn text-accent" style="margin-top: 8px;">➕ Create a Task</button>
+                </div>
+            `;
+            const emptyAddBtn = document.getElementById('btn-empty-add-task');
+            if (emptyAddBtn) {
+                emptyAddBtn.addEventListener('click', () => this.openTaskModal());
+            }
+            return;
+        }
+
+        const now = new Date().toISOString().split('T')[0];
+
+        filtered.forEach(task => {
+            const isOverdue = !task.completed && task.dueDate && task.dueDate < now;
+            const card = document.createElement('div');
+            card.className = `task-card ${task.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`;
+            
+            const dueDisplay = task.dueDate ? `📅 Due: ${task.dueDate}` : '';
+            const durationDisplay = task.estimatedMinutes ? `⏱️ ${task.estimatedMinutes}m` : '';
+
+            card.innerHTML = `
+                <button class="task-check-btn" aria-label="${task.completed ? 'Mark task incomplete' : 'Mark task complete'}">
+                    ✓
+                </button>
+                <div class="task-card-content">
+                    <div class="task-card-header">
+                        <span class="task-card-title">${this.escapeHtml(task.title)}</span>
+                        <span class="task-priority-chip priority-${task.priority || 'medium'}">${task.priority || 'medium'}</span>
+                        <span class="task-category-chip">${this.escapeHtml(task.category || 'General')}</span>
+                    </div>
+                    ${task.description ? `<p class="task-card-desc">${this.escapeHtml(task.description)}</p>` : ''}
+                    <div class="task-card-meta">
+                        ${dueDisplay ? `<span>${dueDisplay}</span>` : ''}
+                        ${durationDisplay ? `<span>${durationDisplay}</span>` : ''}
+                        ${isOverdue ? `<span class="text-error">⚠️ Overdue</span>` : ''}
+                    </div>
+                </div>
+                <div class="task-card-actions">
+                    <button class="btn-task-action edit" title="Edit Task" aria-label="Edit Task">✏️</button>
+                    <button class="btn-task-action delete" title="Delete Task" aria-label="Delete Task">🗑️</button>
+                </div>
+            `;
+
+            // Toggle complete
+            card.querySelector('.task-check-btn').addEventListener('click', (e) => {
+                this.toggleTaskCompletion(task.id, e);
+            });
+
+            // Edit
+            card.querySelector('.btn-task-action.edit').addEventListener('click', () => {
+                this.openTaskModal(task);
+            });
+
+            // Delete
+            card.querySelector('.btn-task-action.delete').addEventListener('click', () => {
+                this.openDeleteModal(task.id);
+            });
+
+            this.dom.tasksList.appendChild(card);
+        });
+    }
+
+    toggleTaskCompletion(taskId, e) {
+        const task = this.state.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        audio.play('click');
+        if (!task.completed) {
+            task.completed = true;
+            task.completedAt = new Date().toISOString();
+            // Reward issued only once per task!
+            if (!task.rewardClaimed) {
+                task.rewardClaimed = true;
+                this.awardTaskReward(e);
+                this.showToast('success', `Completed: "${task.title}"!`);
+            } else {
+                this.showToast('info', `Marked "${task.title}" as completed.`);
+            }
+        } else {
+            // Reversible completion: reward is NOT duplicated upon recheck
+            task.completed = false;
+            task.completedAt = null;
+            this.showToast('info', `Reopened: "${task.title}".`);
+        }
+
+        this.saveState();
+        this.renderTasks();
+    }
+
+    openTaskModal(taskToEdit = null) {
+        if (!this.dom.taskModalOverlay) return;
+
+        if (this.dom.taskTitleError) {
+            this.dom.taskTitleError.classList.add('hidden');
+        }
+
+        if (taskToEdit) {
+            this.editingTaskId = taskToEdit.id;
+            this.dom.taskModalHeading.textContent = 'EDIT TASK';
+            this.dom.taskTitleInput.value = taskToEdit.title || '';
+            this.dom.taskDescInput.value = taskToEdit.description || '';
+            this.dom.taskPrioritySelect.value = taskToEdit.priority || 'medium';
+            this.dom.taskCategorySelect.value = taskToEdit.category || 'Feature';
+            this.dom.taskDueInput.value = taskToEdit.dueDate || '';
+            this.dom.taskDurationInput.value = taskToEdit.estimatedMinutes || '';
+        } else {
+            this.editingTaskId = null;
+            this.dom.taskModalHeading.textContent = 'ADD NEW TASK';
+            this.dom.taskTitleInput.value = '';
+            this.dom.taskDescInput.value = '';
+            this.dom.taskPrioritySelect.value = 'medium';
+            this.dom.taskCategorySelect.value = 'Feature';
+            this.dom.taskDueInput.value = '';
+            this.dom.taskDurationInput.value = '';
+        }
+
+        this.dom.taskModalOverlay.classList.remove('hidden');
+        this.dom.taskTitleInput.focus();
+    }
+
+    closeTaskModal() {
+        if (this.dom.taskModalOverlay) {
+            this.dom.taskModalOverlay.classList.add('hidden');
+        }
+        this.editingTaskId = null;
+    }
+
+    saveTaskForm() {
+        const title = (this.dom.taskTitleInput.value || '').trim();
+        if (!title) {
+            if (this.dom.taskTitleError) {
+                this.dom.taskTitleError.classList.remove('hidden');
+            }
+            audio.play('error');
+            return;
+        }
+
+        if (this.dom.taskTitleError) {
+            this.dom.taskTitleError.classList.add('hidden');
+        }
+
+        const description = (this.dom.taskDescInput.value || '').trim();
+        const priority = this.dom.taskPrioritySelect.value || 'medium';
+        const category = this.dom.taskCategorySelect.value || 'General';
+        const dueDate = this.dom.taskDueInput.value || null;
+        const estimatedMinutes = parseInt(this.dom.taskDurationInput.value, 10);
+        const validDuration = (!isNaN(estimatedMinutes) && estimatedMinutes > 0) ? estimatedMinutes : null;
+
+        if (this.editingTaskId) {
+            const task = this.state.tasks.find(t => t.id === this.editingTaskId);
+            if (task) {
+                task.title = title;
+                task.description = description;
+                task.priority = priority;
+                task.category = category;
+                task.dueDate = dueDate;
+                task.estimatedMinutes = validDuration;
+                this.showToast('success', 'Task updated! ✏️');
+            }
+        } else {
+            const newTask = {
+                id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                title,
+                description,
+                priority,
+                category,
+                dueDate,
+                estimatedMinutes: validDuration,
+                completed: false,
+                completedAt: null,
+                rewardClaimed: false,
+                createdAt: new Date().toISOString()
+            };
+            this.state.tasks.unshift(newTask);
+            this.showToast('success', 'New task added! 📋');
+        }
+
+        audio.play('click');
+        this.saveState();
+        this.renderTasks();
+        this.closeTaskModal();
+    }
+
+    openDeleteModal(taskId) {
+        this.deletingTaskId = taskId;
+        if (this.dom.deleteModalOverlay) {
+            this.dom.deleteModalOverlay.classList.remove('hidden');
+        }
+    }
+
+    closeDeleteModal() {
+        this.deletingTaskId = null;
+        if (this.dom.deleteModalOverlay) {
+            this.dom.deleteModalOverlay.classList.add('hidden');
+        }
+    }
+
+    deleteTask(taskId) {
+        const idx = this.state.tasks.findIndex(t => t.id === taskId);
+        if (idx !== -1) {
+            this.state.tasks.splice(idx, 1);
+            this.showToast('info', 'Task deleted.');
+            this.saveState();
+            this.renderTasks();
+        }
+    }
+
+    escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // --- CPS (Competitive Profiles System) ---
+    validateUsername(username, excludeProfileId = null) {
+        if (!username || typeof username !== 'string') {
+            throw new Error('Username is required');
+        }
+        const trimmed = username.trim();
+        if (trimmed.length < 3 || trimmed.length > 20) {
+            throw new Error('Username must be between 3 and 20 characters');
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+            throw new Error('Username can only contain alphanumeric characters and underscores');
+        }
+        const isDuplicate = this.state.cpsProfiles.some(
+            p => p.id !== excludeProfileId && p.username.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (isDuplicate) {
+            throw new Error(`Username "${trimmed}" is already taken`);
+        }
+        return trimmed;
+    }
+
+    createCpsProfile(data) {
+        const username = this.validateUsername(data?.username);
+        const displayName = (data?.displayName || '').trim();
+        if (!displayName || displayName.length > 30) {
+            throw new Error('Display name must be between 1 and 30 characters');
+        }
+        const avatar = data?.avatar || '🤖';
+        const bio = (data?.bio || '').trim().slice(0, 160);
+        const specialty = (data?.specialty || 'Full-Stack Developer').trim();
+
+        const newProfile = {
+            id: data?.id || `prof_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            username,
+            displayName,
+            avatar,
+            bio,
+            specialty,
+            github: (data?.github || '').trim(),
+            leetcode: (data?.leetcode || '').trim(),
+            codeforces: (data?.codeforces || '').trim(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        if (!Array.isArray(this.state.cpsProfiles)) {
+            this.state.cpsProfiles = [];
+        }
+        this.state.cpsProfiles.push(newProfile);
+        this.state.activeProfileId = newProfile.id;
+        return newProfile;
+    }
+
+    editCpsProfile(profileId, updates) {
+        const profile = this.state.cpsProfiles?.find(p => p.id === profileId);
+        if (!profile) {
+            throw new Error('Profile not found');
+        }
+
+        if (updates.username !== undefined) {
+            profile.username = this.validateUsername(updates.username, profileId);
+        }
+        if (updates.displayName !== undefined) {
+            const dn = updates.displayName.trim();
+            if (!dn || dn.length > 30) {
+                throw new Error('Display name must be between 1 and 30 characters');
+            }
+            profile.displayName = dn;
+        }
+        if (updates.avatar !== undefined) profile.avatar = updates.avatar;
+        if (updates.bio !== undefined) profile.bio = updates.bio.trim().slice(0, 160);
+        if (updates.specialty !== undefined) profile.specialty = updates.specialty.trim();
+        if (updates.github !== undefined) profile.github = updates.github.trim();
+        if (updates.leetcode !== undefined) profile.leetcode = updates.leetcode.trim();
+        if (updates.codeforces !== undefined) profile.codeforces = updates.codeforces.trim();
+        profile.updatedAt = new Date().toISOString();
+        return profile;
+    }
+
+    deleteCpsProfile(profileId) {
+        if (!Array.isArray(this.state.cpsProfiles)) return false;
+        const index = this.state.cpsProfiles.findIndex(p => p.id === profileId);
+        if (index === -1) return false;
+
+        this.state.cpsProfiles.splice(index, 1);
+        if (this.state.activeProfileId === profileId) {
+            this.state.activeProfileId = this.state.cpsProfiles.length > 0 ? this.state.cpsProfiles[0].id : null;
+        }
+        return true;
+    }
+
+    switchActiveCpsProfile(profileId) {
+        const exists = this.state.cpsProfiles?.some(p => p.id === profileId);
+        if (exists) {
+            this.state.activeProfileId = profileId;
+            this.saveState();
+            this.renderCps();
+            this.updateUI();
+            return true;
+        }
+        return false;
+    }
+
+    getActiveCpsProfile() {
+        if (!this.state.activeProfileId || !Array.isArray(this.state.cpsProfiles)) return null;
+        return this.state.cpsProfiles.find(p => p.id === this.state.activeProfileId) || null;
+    }
+
+    calculateProfileRating(profile) {
+        const base = 1000;
+        const taskScore = (this.state.totalTasksCompleted || 0) * 25;
+        const streakScore = (this.state.streak || 0) * 50 + (this.state.longestStreak || 0) * 25;
+        const levelScore = (this.state.level || 1) * 40;
+        const focusScore = Math.floor((this.state.stats?.playtimeSeconds || 0) / 1500) * 30;
+        return base + taskScore + streakScore + levelScore + focusScore;
+    }
+
+    calculateCpsRating() {
+        return this.calculateProfileRating(this.getActiveCpsProfile());
+    }
+
+    getCpsTier(rating) {
+        if (rating >= 2800) return { tier: 'Grandmaster', badge: '👑', color: '#ff0055', next: null, target: 2800, base: 2800 };
+        if (rating >= 2400) return { tier: 'Master', badge: '💎', color: '#b967ff', next: 'Grandmaster', target: 2800, base: 2400 };
+        if (rating >= 2000) return { tier: 'Diamond', badge: '⚡', color: '#00f0ff', next: 'Master', target: 2400, base: 2000 };
+        if (rating >= 1600) return { tier: 'Platinum', badge: '🌟', color: '#00ff9f', next: 'Diamond', target: 2000, base: 1600 };
+        if (rating >= 1300) return { tier: 'Gold', badge: '🏆', color: '#ffb800', next: 'Platinum', target: 1600, base: 1300 };
+        if (rating >= 1100) return { tier: 'Silver', badge: '🛡️', color: '#e0e0e0', next: 'Gold', target: 1300, base: 1100 };
+        return { tier: 'Bronze', badge: '🥉', color: '#cd7f32', next: 'Silver', target: 1100, base: 1000 };
+    }
+
+    getLocalLeaderboard(sortBy = 'rating') {
+        if (!Array.isArray(this.state.cpsProfiles)) return [];
+        const profiles = [...this.state.cpsProfiles];
+
+        profiles.sort((a, b) => {
+            if (sortBy === 'tasks') {
+                const scoreA = this.state.totalTasksCompleted || 0;
+                const scoreB = this.state.totalTasksCompleted || 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+            } else if (sortBy === 'streak') {
+                const scoreA = this.state.longestStreak || 0;
+                const scoreB = this.state.longestStreak || 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+            } else if (sortBy === 'level') {
+                const scoreA = this.state.level || 1;
+                const scoreB = this.state.level || 1;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+            } else {
+                const ratingA = this.calculateProfileRating(a);
+                const ratingB = this.calculateProfileRating(b);
+                if (ratingB !== ratingA) return ratingB - ratingA;
+            }
+            // Deterministic tie-breaker: creation time ascending
+            return new Date(a.createdAt) - new Date(b.createdAt);
+        });
+
+        return profiles.map((p, idx) => ({
+            rank: idx + 1,
+            profile: p,
+            rating: this.calculateProfileRating(p),
+            isCurrentActive: p.id === this.state.activeProfileId
+        }));
+    }
+
+    switchCpsSubTab(subTabName) {
+        this.activeCpsSubTab = subTabName;
+        if (this.dom.cpsSubnavBtns) {
+            this.dom.cpsSubnavBtns.forEach(btn => {
+                const match = btn.getAttribute('data-cps-sub') === subTabName;
+                btn.classList.toggle('active', match);
+            });
+        }
+        if (this.dom.cpsSubviews) {
+            this.dom.cpsSubviews.forEach(view => {
+                const match = view.id === `cps-sub-${subTabName}`;
+                view.classList.toggle('active', match);
+                view.classList.toggle('hidden', !match);
+            });
+        }
+        const activeProfile = this.getActiveCpsProfile();
+        if (subTabName === 'overview') this.renderCpsOverview(activeProfile);
+        else if (subTabName === 'stats') this.renderCpsStats(activeProfile);
+        else if (subTabName === 'leaderboard') this.renderCpsLeaderboard();
+        else if (subTabName === 'challenges') this.renderCpsChallenges();
+    }
+
+    renderCps() {
+        if (!this.dom.cpsEmptyView || !this.dom.cpsActiveView) return;
+
+        // Empty state when no competitive profile exists
+        if (!this.state.cpsProfiles || this.state.cpsProfiles.length === 0) {
+            this.dom.cpsEmptyView.classList.remove('hidden');
+            this.dom.cpsActiveView.classList.add('hidden');
+            return;
+        }
+
+        // Active state with profiles
+        this.dom.cpsEmptyView.classList.add('hidden');
+        this.dom.cpsActiveView.classList.remove('hidden');
+
+        // Populate Profile Switcher Dropdown
+        if (this.dom.cpsProfileSelect) {
+            this.dom.cpsProfileSelect.innerHTML = '';
+            this.state.cpsProfiles.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.displayName} (@${p.username})`;
+                if (p.id === this.state.activeProfileId) {
+                    opt.selected = true;
+                }
+                this.dom.cpsProfileSelect.appendChild(opt);
+            });
+        }
+
+        const activeProfile = this.getActiveCpsProfile();
+        this.switchCpsSubTab(this.activeCpsSubTab || 'overview');
+    }
+
+    renderCpsOverview(profile) {
+        if (!profile) return;
+        const rating = this.calculateProfileRating(profile);
+        const tier = this.getCpsTier(rating);
+
+        if (this.dom.cpsAvatarDisplay) this.dom.cpsAvatarDisplay.textContent = profile.avatar || '🤖';
+        if (this.dom.cpsNameDisplay) this.dom.cpsNameDisplay.textContent = profile.displayName;
+        if (this.dom.cpsUsernameDisplay) this.dom.cpsUsernameDisplay.textContent = `@${profile.username}`;
+        if (this.dom.cpsTitleDisplay) this.dom.cpsTitleDisplay.textContent = `${tier.tier} Developer`;
+        if (this.dom.cpsSpecialtyDisplay) this.dom.cpsSpecialtyDisplay.textContent = profile.specialty || 'Full-Stack Developer';
+        if (this.dom.cpsRatingDisplay) this.dom.cpsRatingDisplay.textContent = rating;
+        if (this.dom.cpsCurrentTierName) this.dom.cpsCurrentTierName.textContent = tier.tier;
+        if (this.dom.cpsTierEmblem) this.dom.cpsTierEmblem.textContent = tier.badge;
+        if (this.dom.cpsNextTierName) {
+            this.dom.cpsNextTierName.textContent = tier.next ? `${tier.next} (${tier.target})` : 'MAX TIER';
+        }
+
+        if (this.dom.cpsTierProgressBar) {
+            if (tier.next) {
+                const range = tier.target - (tier.base || 1000);
+                const current = Math.max(0, rating - (tier.base || 1000));
+                const pct = Math.min(100, Math.floor((current / range) * 100));
+                this.dom.cpsTierProgressBar.style.width = `${pct}%`;
+            } else {
+                this.dom.cpsTierProgressBar.style.width = '100%';
+            }
+        }
+
+        if (this.dom.cpsBioDisplay) {
+            this.dom.cpsBioDisplay.textContent = profile.bio || 'Coding alongside my floating desktop companion.';
+        }
+
+        if (this.dom.cpsGithubLink) {
+            this.dom.cpsGithubLink.textContent = profile.github ? `🔗 GitHub: @${profile.github}` : '🔗 GitHub: Not linked';
+        }
+        if (this.dom.cpsLeetcodeLink) {
+            this.dom.cpsLeetcodeLink.textContent = profile.leetcode ? `🏆 LeetCode: @${profile.leetcode}` : '🏆 LeetCode: Not linked';
+        }
+        if (this.dom.cpsCodeforcesLink) {
+            this.dom.cpsCodeforcesLink.textContent = profile.codeforces ? `⚡ Codeforces: @${profile.codeforces}` : '⚡ Codeforces: Not linked';
+        }
+        if (this.dom.cpsUidDisplay) {
+            this.dom.cpsUidDisplay.textContent = profile.id;
+        }
+    }
+
+    renderCpsStats(profile) {
+        if (!profile) return;
+        const rating = this.calculateProfileRating(profile);
+
+        // Lifetime Totals
+        if (this.dom.cpsStatTasks) this.dom.cpsStatTasks.textContent = this.state.totalTasksCompleted;
+        if (this.dom.cpsStatTotalXp) {
+            const totalXp = (this.state.level - 1) * this.xpPerLevel + this.state.currentXp;
+            this.dom.cpsStatTotalXp.textContent = totalXp;
+        }
+        if (this.dom.cpsStatTotalCoins) this.dom.cpsStatTotalCoins.textContent = this.state.coins;
+        if (this.dom.cpsStatFocusHrs) {
+            const hrs = ((this.state.stats?.playtimeSeconds || 0) / 3600).toFixed(1);
+            this.dom.cpsStatFocusHrs.textContent = `${hrs}h`;
+        }
+
+        // Current State
+        if (this.dom.cpsStatCurrStreak) this.dom.cpsStatCurrStreak.textContent = `${this.state.streak}d`;
+        if (this.dom.cpsStatLevel) this.dom.cpsStatLevel.textContent = this.state.level;
+        if (this.dom.cpsStatHappiness) this.dom.cpsStatHappiness.textContent = `${Math.floor(this.state.currentHappiness)}%`;
+        if (this.dom.cpsStatRatingCalc) this.dom.cpsStatRatingCalc.textContent = rating;
+
+        // Records & Milestones
+        if (this.dom.cpsStatBestStreak) this.dom.cpsStatBestStreak.textContent = `${this.state.longestStreak} Days`;
+        if (this.dom.cpsStatAchCount) {
+            const totalAch = this.getAchievementsList().length;
+            this.dom.cpsStatAchCount.textContent = `${this.state.unlockedAchievements.length} / ${totalAch}`;
+        }
+        if (this.dom.cpsStatFirstTask) {
+            this.dom.cpsStatFirstTask.textContent = this.state.totalTasksCompleted > 0 ? '✓ UNLOCKED' : 'IN PROGRESS';
+        }
+    }
+
+    renderCpsLeaderboard() {
+        if (!this.dom.leaderboardList) return;
+        this.dom.leaderboardList.innerHTML = '';
+
+        const ranked = this.getLocalLeaderboard(this.cpsLeaderboardSort || 'rating');
+        if (ranked.length === 0) {
+            this.dom.leaderboardList.innerHTML = '<div class="stat-subtext" style="text-align: center; padding: 1.5rem;">No local profiles available to rank.</div>';
+            return;
+        }
+
+        ranked.forEach(item => {
+            const card = document.createElement('div');
+            card.className = `leaderboard-item panel ${item.isCurrentActive ? 'active-profile' : ''}`;
+
+            let rankBadge = `#${item.rank}`;
+            if (item.rank === 1) rankBadge = '🥇 #1';
+            else if (item.rank === 2) rankBadge = '🥈 #2';
+            else if (item.rank === 3) rankBadge = '🥉 #3';
+
+            let metricLabel = `${item.rating} PTS`;
+            if (this.cpsLeaderboardSort === 'tasks') metricLabel = `${this.state.totalTasksCompleted} Tasks`;
+            else if (this.cpsLeaderboardSort === 'streak') metricLabel = `${this.state.longestStreak}d Streak`;
+            else if (this.cpsLeaderboardSort === 'level') metricLabel = `Lvl ${this.state.level}`;
+
+            card.innerHTML = `
+                <div class="lb-rank">${rankBadge}</div>
+                <div class="lb-avatar">${item.profile.avatar || '🤖'}</div>
+                <div class="lb-meta">
+                    <strong>${this.escapeHtml(item.profile.displayName)}</strong>
+                    <span class="lb-handle">@${this.escapeHtml(item.profile.username)}</span>
+                </div>
+                <div class="lb-score text-accent">${metricLabel}</div>
+                ${item.isCurrentActive ? '<span class="active-profile-pill">YOU (ACTIVE)</span>' : `<button class="toggle-btn btn-switch-profile" data-profile-id="${item.profile.id}">SWITCH</button>`}
+            `;
+
+            if (!item.isCurrentActive) {
+                const switchBtn = card.querySelector('.btn-switch-profile');
+                if (switchBtn) {
+                    switchBtn.addEventListener('click', () => {
+                        audio.play('click');
+                        this.switchActiveCpsProfile(item.profile.id);
+                        this.showToast('info', `Switched active profile to ${item.profile.displayName}! 👤`);
+                    });
+                }
+            }
+
+            this.dom.leaderboardList.appendChild(card);
+        });
+    }
+
+    renderCpsChallenges() {
+        if (!this.dom.competitiveChallengesList) return;
+        this.dom.competitiveChallengesList.innerHTML = '';
+
+        const sprintChallenges = [
+            {
+                id: 'chal-sprint-10',
+                title: 'Sprint: 10 Verified Tasks',
+                objective: 'Complete 10 real coding tasks without streak interruption',
+                target: 10,
+                progress: Math.min(10, this.state.totalTasksCompleted),
+                rewardCoins: 50,
+                rewardXp: 100
+            },
+            {
+                id: 'chal-streak-3',
+                title: 'Consistency: 3-Day Focus Streak',
+                objective: 'Maintain an unbroken daily task streak of 3 consecutive days',
+                target: 3,
+                progress: Math.min(3, this.state.longestStreak),
+                rewardCoins: 75,
+                rewardXp: 150
+            },
+            {
+                id: 'chal-mastery-5',
+                title: 'Evolution: Reach Level 5',
+                objective: 'Train your companion through focus and completed tasks to Level 5',
+                target: 5,
+                progress: Math.min(5, this.state.level),
+                rewardCoins: 100,
+                rewardXp: 200
+            }
+        ];
+
+        // Track completed challenges in state to prevent duplicate claims
+        if (!Array.isArray(this.state.completedChallenges)) {
+            this.state.completedChallenges = [];
+        }
+
+        sprintChallenges.forEach(ch => {
+            const isCompleted = ch.progress >= ch.target;
+            const isClaimed = this.state.completedChallenges.includes(ch.id);
+            const pct = Math.min(100, Math.floor((ch.progress / ch.target) * 100));
+
+            const card = document.createElement('div');
+            card.className = `challenge-item ${isCompleted ? 'completed' : ''}`;
+            card.innerHTML = `
+                <div class="chal-title">
+                    <span>${this.escapeHtml(ch.title)}</span>
+                    <span class="text-accent">${ch.progress}/${ch.target}</span>
+                </div>
+                <p class="stat-subtext" style="margin: 4px 0;">${this.escapeHtml(ch.objective)}</p>
+                <div class="chal-prog"><div class="chal-prog-fill" style="width: ${pct}%"></div></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                    <span class="stat-subtext">Reward: +${ch.rewardCoins}🪙 +${ch.rewardXp}XP</span>
+                    ${isClaimed 
+                        ? '<span class="text-success font-bold">✓ CLAIMED</span>' 
+                        : (isCompleted 
+                            ? `<button class="toggle-btn text-accent btn-claim-challenge" data-chal-id="${ch.id}">CLAIM REWARD</button>` 
+                            : '<span class="stat-subtext">In Progress</span>')}
+                </div>
+            `;
+
+            if (isCompleted && !isClaimed) {
+                const claimBtn = card.querySelector('.btn-claim-challenge');
+                if (claimBtn) {
+                    claimBtn.addEventListener('click', () => {
+                        this.claimChallengeReward(ch);
+                    });
+                }
+            }
+
+            this.dom.competitiveChallengesList.appendChild(card);
+        });
+    }
+
+    claimChallengeReward(ch) {
+        if (!ch || !ch.id) return;
+        if (!Array.isArray(this.state.completedChallenges)) {
+            this.state.completedChallenges = [];
+        }
+        if (this.state.completedChallenges.includes(ch.id)) {
+            this.showToast('info', 'Reward already claimed!');
+            return;
+        }
+
+        this.state.completedChallenges.push(ch.id);
+        this.state.coins += ch.rewardCoins;
+        this.state.currentXp += ch.rewardXp;
+        audio.play('level');
+        this.showToast('success', `Challenge Claimed: +${ch.rewardCoins}🪙 +${ch.rewardXp}XP! 🏆`);
+
+        if (this.state.currentXp >= this.xpPerLevel) {
+            this.levelUp();
+        }
+
+        this.saveState();
+        this.updateUI();
+        this.renderCpsChallenges();
+    }
+
+    openCpsModal(profileToEdit = null) {
+        if (!this.dom.cpsModalOverlay) return;
+
+        // Reset errors
+        if (this.dom.cpsNameError) this.dom.cpsNameError.classList.add('hidden');
+        if (this.dom.cpsUsernameError) this.dom.cpsUsernameError.classList.add('hidden');
+
+        if (profileToEdit) {
+            this.editingProfileId = profileToEdit.id;
+            if (this.dom.cpsModalHeading) this.dom.cpsModalHeading.textContent = 'EDIT COMPETITIVE PROFILE';
+            if (this.dom.cpsNameInput) this.dom.cpsNameInput.value = profileToEdit.displayName || '';
+            if (this.dom.cpsUsernameInput) this.dom.cpsUsernameInput.value = profileToEdit.username || '';
+            if (this.dom.cpsSpecialtyInput) this.dom.cpsSpecialtyInput.value = profileToEdit.specialty || 'Full-Stack Developer';
+            if (this.dom.cpsBioInput) this.dom.cpsBioInput.value = profileToEdit.bio || '';
+            if (this.dom.cpsGithubInput) this.dom.cpsGithubInput.value = profileToEdit.github || '';
+            if (this.dom.cpsLeetcodeInput) this.dom.cpsLeetcodeInput.value = profileToEdit.leetcode || '';
+            if (this.dom.cpsCodeforcesInput) this.dom.cpsCodeforcesInput.value = profileToEdit.codeforces || '';
+            this.selectedCpsAvatar = profileToEdit.avatar || '🤖';
+        } else {
+            this.editingProfileId = null;
+            if (this.dom.cpsModalHeading) this.dom.cpsModalHeading.textContent = 'CREATE COMPETITIVE PROFILE';
+            if (this.dom.cpsNameInput) this.dom.cpsNameInput.value = '';
+            if (this.dom.cpsUsernameInput) this.dom.cpsUsernameInput.value = '';
+            if (this.dom.cpsSpecialtyInput) this.dom.cpsSpecialtyInput.value = 'Full-Stack Developer';
+            if (this.dom.cpsBioInput) this.dom.cpsBioInput.value = '';
+            if (this.dom.cpsGithubInput) this.dom.cpsGithubInput.value = '';
+            if (this.dom.cpsLeetcodeInput) this.dom.cpsLeetcodeInput.value = '';
+            if (this.dom.cpsCodeforcesInput) this.dom.cpsCodeforcesInput.value = '';
+            this.selectedCpsAvatar = '🤖';
+        }
+
+        // Highlight selected avatar
+        if (this.dom.avatarOptBtns) {
+            this.dom.avatarOptBtns.forEach(btn => {
+                const isSelected = btn.getAttribute('data-avatar') === this.selectedCpsAvatar;
+                btn.classList.toggle('active', isSelected);
+            });
+        }
+
+        this.dom.cpsModalOverlay.classList.remove('hidden');
+        if (this.dom.cpsNameInput) this.dom.cpsNameInput.focus();
+    }
+
+    closeCpsModal() {
+        if (this.dom.cpsModalOverlay) {
+            this.dom.cpsModalOverlay.classList.add('hidden');
+        }
+        this.editingProfileId = null;
+    }
+
+    saveCpsForm() {
+        const displayName = (this.dom.cpsNameInput.value || '').trim();
+        const rawUsername = (this.dom.cpsUsernameInput.value || '').trim();
+
+        let hasError = false;
+
+        if (!displayName || displayName.length > 30) {
+            if (this.dom.cpsNameError) this.dom.cpsNameError.classList.remove('hidden');
+            hasError = true;
+        } else {
+            if (this.dom.cpsNameError) this.dom.cpsNameError.classList.add('hidden');
+        }
+
+        let validatedUsername = null;
+        try {
+            validatedUsername = this.validateUsername(rawUsername, this.editingProfileId);
+            if (this.dom.cpsUsernameError) this.dom.cpsUsernameError.classList.add('hidden');
+        } catch (err) {
+            if (this.dom.cpsUsernameError) {
+                this.dom.cpsUsernameError.textContent = err.message;
+                this.dom.cpsUsernameError.classList.remove('hidden');
+            }
+            hasError = true;
+        }
+
+        if (hasError) {
+            audio.play('error');
+            return;
+        }
+
+        const avatar = this.selectedCpsAvatar || '🤖';
+        const specialty = this.dom.cpsSpecialtyInput.value || 'Full-Stack Developer';
+        const bio = (this.dom.cpsBioInput.value || '').trim().slice(0, 160);
+        const github = (this.dom.cpsGithubInput.value || '').trim();
+        const leetcode = (this.dom.cpsLeetcodeInput.value || '').trim();
+        const codeforces = (this.dom.cpsCodeforcesInput.value || '').trim();
+
+        if (this.editingProfileId) {
+            this.editCpsProfile(this.editingProfileId, {
+                displayName,
+                username: validatedUsername,
+                avatar,
+                specialty,
+                bio,
+                github,
+                leetcode,
+                codeforces
+            });
+            this.showToast('success', 'Competitive profile updated! 🏆');
+        } else {
+            this.createCpsProfile({
+                displayName,
+                username: validatedUsername,
+                avatar,
+                specialty,
+                bio,
+                github,
+                leetcode,
+                codeforces
+            });
+            this.showToast('success', `Competitive profile @${validatedUsername} created! 🌟`);
+        }
+
+        audio.play('click');
+        this.saveState();
+        this.renderCps();
+        this.updateUI();
+        this.closeCpsModal();
+    }
+
+    openDeleteCpsModal(profileId) {
+        this.deletingProfileId = profileId;
+        if (this.dom.cpsDeleteModalOverlay) {
+            this.dom.cpsDeleteModalOverlay.classList.remove('hidden');
+        }
+    }
+
+    closeDeleteCpsModal() {
+        this.deletingProfileId = null;
+        if (this.dom.cpsDeleteModalOverlay) {
+            this.dom.cpsDeleteModalOverlay.classList.add('hidden');
+        }
+    }
+
+    confirmDeleteCps() {
+        if (!this.deletingProfileId) return;
+        const success = this.deleteCpsProfile(this.deletingProfileId);
+        if (success) {
+            this.showToast('info', 'Profile deleted.');
+            this.saveState();
+            this.renderCps();
+            this.updateUI();
+        }
+        this.closeDeleteCpsModal();
     }
 
     // --- Moods & Sleep ---
@@ -759,7 +2027,6 @@ class CodeBuddy {
 
     completePomo() {
         this.stopPomo();
-        // Reset timer back to duration so user cannot spam zero-second completions
         this.pomo.timeRem = (this.pomo.selectedMin || 25) * 60;
         this.updatePomoUI();
 
@@ -775,35 +2042,100 @@ class CodeBuddy {
         this.saveState();
     }
 
-    // --- Shop & Inventory ---
+    // --- Shop & Inventory (Unified Catalog, Previews & Equip Toggles) ---
     getShopItems() {
         return [
-            { id: 'bg-space', name: 'Space BG', cost: 100, type: 'bg', color: '#050511' },
-            { id: 'bg-forest', name: 'Forest BG', cost: 100, type: 'bg', color: '#040a04' },
-            { id: 'acc-hat2', name: 'Top Hat', cost: 150, type: 'hat' },
-            { id: 'acc-shades2', name: 'Neon Shades', cost: 150, type: 'glasses' }
+            { 
+                id: 'bg-space', 
+                name: 'Space BG', 
+                cost: 100, 
+                type: 'bg', 
+                thumbClass: 'thumb-space', 
+                previewIcon: '🌌', 
+                desc: 'Deep cosmic nebula with parallax stars' 
+            },
+            { 
+                id: 'bg-forest', 
+                name: 'Forest BG', 
+                cost: 100, 
+                type: 'bg', 
+                thumbClass: 'thumb-forest', 
+                previewIcon: '🌲', 
+                desc: 'Neon cyber-emerald grid and atmosphere' 
+            },
+            { 
+                id: 'acc-hat2', 
+                name: 'Top Hat', 
+                cost: 150, 
+                type: 'hat', 
+                previewIcon: '🎩', 
+                desc: 'Aristocratic cyberpunk topper' 
+            },
+            { 
+                id: 'acc-shades2', 
+                name: 'Neon Shades', 
+                cost: 150, 
+                type: 'glasses', 
+                previewIcon: '🕶️', 
+                desc: 'Laser-pink cyber visors' 
+            }
         ];
     }
 
     renderShop() {
+        if (this.dom.shopCoinsDisplay) {
+            this.dom.shopCoinsDisplay.textContent = this.state.coins;
+        }
         if (!this.dom.shopGrid) return;
         this.dom.shopGrid.innerHTML = '';
+
         this.getShopItems().forEach(item => {
             const isOwned = this.state.shopUnlocked.includes(item.id);
+            const isEquipped = this.state.equippedAccessories[item.type] === item.id;
             const el = document.createElement('div');
             el.className = `shop-item rarity-epic`;
+
+            const thumbHtml = item.thumbClass 
+                ? `<div class="shop-thumbnail ${item.thumbClass}">${item.previewIcon || ''}</div>`
+                : `<div class="inv-icon">${item.previewIcon || '🛒'}</div>`;
+
+            let actionBtnHtml = '';
+            if (!isOwned) {
+                actionBtnHtml = `<button class="toggle-btn text-warning" aria-label="Buy ${item.name}">${item.cost} 🪙 BUY</button>`;
+            } else if (isEquipped) {
+                actionBtnHtml = `<button class="toggle-btn equipped" aria-label="Unequip ${item.name}">UNEQUIP</button>`;
+            } else {
+                actionBtnHtml = `<button class="toggle-btn text-accent" aria-label="Equip ${item.name}">EQUIP</button>`;
+            }
+
             el.innerHTML = `
-                <div class="inv-icon">🛒</div>
+                ${thumbHtml}
                 <div class="inv-details">
                     <span class="inv-name">${item.name}</span>
-                    <span class="shop-cost">${isOwned ? 'OWNED' : item.cost + ' 🪙'}</span>
+                    <span class="shop-cost">${isOwned ? (isEquipped ? '<span class="badge-equipped">EQUIPPED</span>' : 'OWNED') : item.cost + ' 🪙'}</span>
                 </div>
-                <button class="toggle-btn text-warning" ${isOwned ? 'disabled' : ''}>
-                    ${isOwned ? 'BOUGHT' : 'BUY'}
-                </button>
+                ${actionBtnHtml}
             `;
+
+            const btn = el.querySelector('button');
             if (!isOwned) {
-                el.querySelector('button').addEventListener('click', () => this.buyItem(item));
+                btn.addEventListener('click', () => this.buyItem(item));
+            } else {
+                btn.addEventListener('click', () => {
+                    audio.play('click');
+                    if (isEquipped) {
+                        this.state.equippedAccessories[item.type] = false;
+                        this.showToast('info', `Unequipped ${item.name}.`);
+                    } else {
+                        this.state.equippedAccessories[item.type] = item.id;
+                        this.showToast('success', `Equipped ${item.name}! ✨`);
+                    }
+                    this.applyEquippedBackground();
+                    this.saveState();
+                    this.renderShop();
+                    this.renderInventory();
+                    this.updateAccessoriesUI();
+                });
             }
             this.dom.shopGrid.appendChild(el);
         });
@@ -811,15 +2143,29 @@ class CodeBuddy {
     }
 
     buyItem(item) {
+        if (!item || !item.id) return;
+
+        // Prevent duplicate purchases
+        if (this.state.shopUnlocked.includes(item.id)) {
+            this.showToast('info', `You already own ${item.name}!`);
+            audio.play('click');
+            return;
+        }
+
         if (this.state.coins >= item.cost) {
             this.state.coins -= item.cost;
-            if (!this.state.shopUnlocked.includes(item.id)) {
-                this.state.shopUnlocked.push(item.id);
+            this.state.shopUnlocked.push(item.id);
+            // Auto equip on buy
+            if (item.type) {
+                this.state.equippedAccessories[item.type] = item.id;
             }
             audio.play('coin');
-            this.showToast('success', `Bought ${item.name}!`);
+            this.showToast('success', `Bought and equipped ${item.name}! 🛒`);
+            this.applyEquippedBackground();
             this.saveState();
             this.renderShop();
+            this.renderInventory();
+            this.updateAccessoriesUI();
             this.updateUI();
         } else {
             audio.play('error');
@@ -838,7 +2184,14 @@ class CodeBuddy {
 
         this.getShopItems().forEach(si => {
             if (this.state.shopUnlocked.includes(si.id)) {
-                items.push({ id: si.id, name: si.name, req: 1, icon: '✨', type: si.type, color: si.color });
+                items.push({ 
+                    id: si.id, 
+                    name: si.name, 
+                    req: 1, 
+                    icon: si.previewIcon || '✨', 
+                    type: si.type, 
+                    thumbClass: si.thumbClass 
+                });
             }
         });
 
@@ -847,11 +2200,16 @@ class CodeBuddy {
             const isEquipped = this.state.equippedAccessories[item.type] === item.id;
             const el = document.createElement('div');
             el.className = `inv-slot rarity-common ${isUnlocked ? '' : 'locked'}`;
+
+            const iconHtml = item.thumbClass
+                ? `<div class="shop-thumbnail ${item.thumbClass}" style="margin: 0 auto 0.4rem;">${item.icon}</div>`
+                : `<div class="inv-icon">${item.icon}</div>`;
+
             el.innerHTML = `
-                <div class="inv-icon">${item.icon}</div>
+                ${iconHtml}
                 <div class="inv-details">
                     <span class="inv-name">${item.name}</span>
-                    <span class="inv-status">${isUnlocked ? 'Unlocked' : 'Lvl ' + item.req}</span>
+                    <span class="inv-status">${isUnlocked ? (isEquipped ? 'EQUIPPED' : 'Owned') : 'Lvl ' + item.req}</span>
                 </div>
                 <button class="toggle-btn ${isEquipped ? 'equipped' : ''}" ${isUnlocked ? '' : 'disabled'}>
                     ${isEquipped ? 'UNEQUIP' : 'EQUIP'}
@@ -862,11 +2220,14 @@ class CodeBuddy {
                     audio.play('click');
                     if (isEquipped) {
                         this.state.equippedAccessories[item.type] = false;
+                        this.showToast('info', `Unequipped ${item.name}.`);
                     } else {
                         this.state.equippedAccessories[item.type] = item.id;
+                        this.showToast('success', `Equipped ${item.name}! ✨`);
                     }
                     this.applyEquippedBackground();
                     this.saveState();
+                    this.renderShop();
                     this.renderInventory();
                     this.updateAccessoriesUI();
                 });
@@ -928,7 +2289,6 @@ class CodeBuddy {
         this.state.collectibles.push(col);
         this.showToast('success', `Loot Found! ${col.name} (${col.rarity}) 🎁`);
         this.renderCollectibles();
-        audio.play('level');
         this.saveState();
     }
 
@@ -939,111 +2299,100 @@ class CodeBuddy {
             this.dom.colGrid.innerHTML = '<span class="stat-subtext">No collectibles yet... Complete coding tasks!</span>';
             return;
         }
-        this.state.collectibles.forEach(c => {
+        this.state.collectibles.forEach(col => {
             const el = document.createElement('div');
-            el.className = `col-item rarity-${c.rarity}`;
-            // Use safe textContent inside spans to prevent DOM injection
-            const icon = document.createElement('div');
-            icon.className = 'inv-icon';
-            icon.textContent = '🎁';
-
-            const details = document.createElement('div');
-            details.className = 'inv-details';
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'inv-name';
-            nameSpan.textContent = c.name;
-            const statusSpan = document.createElement('span');
-            statusSpan.className = 'inv-status';
-            statusSpan.textContent = (c.rarity || 'common').toUpperCase();
-
-            details.appendChild(nameSpan);
-            details.appendChild(statusSpan);
-            el.appendChild(icon);
-            el.appendChild(details);
+            el.className = `col-item rarity-${col.rarity}`;
+            el.innerHTML = `
+                <div class="inv-icon">📦</div>
+                <div class="inv-details">
+                    <span class="inv-name">${col.name}</span>
+                    <span class="inv-status">${col.rarity.toUpperCase()}</span>
+                </div>
+            `;
             this.dom.colGrid.appendChild(el);
         });
     }
 
-    // --- Random Events & Dialogues ---
-    showDialogue() {
-        if (this.isSleeping || !this.dom.dialogueBubble) return;
-        clearTimeout(this.dialogueTimeout);
-        const lines = [
-            "Let's build something awesome!",
-            "One more task!",
-            "You're doing great!",
-            "Every line of code makes me stronger!",
-            "Time for a quick coffee break?"
+    // --- Dialogue & Interactive Events ---
+    showDialogue(customText = null) {
+        if (!this.dom.dialogueBubble || this.isSleeping) return;
+        const quotes = [
+            "Remember to commit often!",
+            "Did you test that edge case?",
+            "Drink some water, dev! 💧",
+            "Beep boop! Ready to code!",
+            "Your streak is looking hot 🔥",
+            "Refactoring is self-care.",
+            "Syntax error? No problem!",
+            "One more task!"
         ];
-        this.dom.dialogueBubble.textContent = lines[Math.floor(Math.random() * lines.length)];
+        const text = customText || quotes[Math.floor(Math.random() * quotes.length)];
+        this.dom.dialogueBubble.textContent = text;
         this.dom.dialogueBubble.classList.remove('hidden');
+        clearTimeout(this.dialogueTimeout);
         this.dialogueTimeout = setTimeout(() => {
             this.dom.dialogueBubble.classList.add('hidden');
         }, 4000);
     }
 
     triggerRandomEvent() {
-        if (this.isSleeping || Math.random() > 0.5 || !this.dom.eventContainer) return;
-        clearTimeout(this.eventTimeout);
-
-        this.tempPetMood('curious', 3000);
+        if (!this.dom.eventContainer || this.isSleeping) return;
         const events = [
-            { icon: '🐛', name: 'Bug Catch!', reward: 15 },
-            { icon: '☕', name: 'Coffee Boost', reward: 10 },
-            { icon: '💎', name: 'Lucky Gem', reward: 50 }
+            { name: "Bug Catch! 🐛", reward: 15, msg: "Caught a bug! +15🪙" },
+            { name: "Coffee Boost! ☕", reward: 10, msg: "Caffeine surge! +10🪙" },
+            { name: "Lucky Gem! 💎", reward: 50, msg: "Found a lucky gem! +50🪙" }
         ];
         const ev = events[Math.floor(Math.random() * events.length)];
-        this.dom.eventContainer.textContent = ev.icon;
-        this.dom.eventContainer.setAttribute('title', `${ev.name} - Click to claim!`);
+        this.dom.eventContainer.textContent = ev.name;
         this.dom.eventContainer.classList.remove('hidden');
+        this.tempPetMood('curious', 3000);
 
-        const clickHandler = (e) => {
-            e.stopPropagation();
-            clearTimeout(this.eventTimeout);
-            this.dom.eventContainer.classList.add('hidden');
-            this.dom.eventContainer.removeEventListener('click', clickHandler);
-
+        const onClick = () => {
             this.state.coins += ev.reward;
-            this.showToast('success', `${ev.name} +${ev.reward}🪙`);
+            this.showToast('success', ev.msg);
             audio.play('coin');
-            this.tempPetMood('happy', 2000);
-            this.saveState();
+            this.dom.eventContainer.classList.add('hidden');
+            this.dom.eventContainer.removeEventListener('click', onClick);
             this.updateUI();
+            this.saveState();
         };
 
-        this.dom.eventContainer.addEventListener('click', clickHandler);
+        this.dom.eventContainer.addEventListener('click', onClick);
+        clearTimeout(this.eventTimeout);
         this.eventTimeout = setTimeout(() => {
             this.dom.eventContainer.classList.add('hidden');
-            this.dom.eventContainer.removeEventListener('click', clickHandler);
+            this.dom.eventContainer.removeEventListener('click', onClick);
         }, 10000);
     }
 
     // --- Challenges ---
     generateChallenges() {
-        if (!this.state.challenges || this.state.challenges.length === 0) {
-            this.state.challenges = [
-                { id: 'c1', desc: 'Complete 10 tasks', type: 'tasks', target: 10, progress: 0, reward: 50, done: false },
-                { id: 'c2', desc: 'Reach Level 5', type: 'levels', target: 5, progress: this.state.level, reward: 100, done: false }
-            ];
-            this.saveState();
+        if (this.state.challenges && this.state.challenges.length > 0) {
+            this.renderChallenges();
+            return;
         }
+        this.state.challenges = [
+            { id: 'c1', desc: 'Complete 10 tasks', type: 'tasks', target: 10, progress: 0, reward: 50, done: false },
+            { id: 'c2', desc: 'Reach Level 5', type: 'levels', target: 5, progress: this.state.level, reward: 100, done: false }
+        ];
         this.renderChallenges();
     }
 
     updateChallengeProgress(type, amt) {
+        if (!this.state.challenges) return;
         let changed = false;
         this.state.challenges.forEach(c => {
-            if (!c.done && c.type === type) {
+            if (c.type === type && !c.done) {
                 if (type === 'levels') {
                     c.progress = this.state.level;
                 } else {
                     c.progress += amt;
                 }
                 if (c.progress >= c.target) {
-                    c.progress = c.target;
                     c.done = true;
+                    c.progress = c.target;
                     this.state.coins += c.reward;
-                    this.showToast('achievement', `Challenge Complete! +${c.reward}🪙`);
+                    this.showToast('success', `Challenge Done: ${c.desc}! +${c.reward}🪙`);
                     audio.play('level');
                 }
                 changed = true;
@@ -1071,7 +2420,7 @@ class CodeBuddy {
         });
     }
 
-    // --- Achievements (Rendered & Unlocked Accurately) ---
+    // --- Achievements ---
     getAchievementsList() {
         return [
             { id: 'ach-1', target: 1, name: 'First Code', desc: 'Complete your 1st coding task', icon: '💻' },
@@ -1123,7 +2472,7 @@ class CodeBuddy {
         }
     }
 
-    // --- Save & Load Management ---
+    // --- Save & Theme Management ---
     applyTheme() {
         document.body.setAttribute('data-theme', this.state.theme);
         if (this.dom.themeSwitcher) {
@@ -1132,7 +2481,6 @@ class CodeBuddy {
         if (this.dom.btnMute) {
             this.dom.btnMute.textContent = this.state.audioMuted ? '🔇' : '🔊';
         }
-        // Cache canvas accent color once per theme change
         this.canvasAccentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#00F0FF';
         this.applyEquippedBackground();
     }
@@ -1141,7 +2489,7 @@ class CodeBuddy {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.state, null, 2));
         const anchor = document.createElement('a');
         anchor.setAttribute("href", dataStr);
-        anchor.setAttribute("download", `codebuddy_save_${new Date().toISOString().split('T')[0]}.json`);
+        anchor.setAttribute("download", `devpet_save_${new Date().toISOString().split('T')[0]}.json`);
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
@@ -1158,7 +2506,8 @@ class CodeBuddy {
                 if (!parsed || typeof parsed !== 'object' || typeof parsed.level === 'undefined') {
                     throw new Error("Invalid save schema");
                 }
-                localStorage.setItem(this.storageKey, JSON.stringify(parsed));
+                this.mergeState(parsed);
+                this.saveState();
                 this.showToast('success', 'Save imported! Reloading...');
                 setTimeout(() => location.reload(), 600);
             } catch (err) {
@@ -1235,10 +2584,12 @@ class CodeBuddy {
             if (this.dom.xpText) this.dom.xpText.textContent = this.state.currentXp;
             if (this.dom.totalTasksDisplay) this.dom.totalTasksDisplay.textContent = this.state.totalTasksCompleted;
             if (this.dom.coinsDisplay) this.dom.coinsDisplay.textContent = this.state.coins;
+            if (this.dom.shopCoinsDisplay) this.dom.shopCoinsDisplay.textContent = this.state.coins;
         } else {
             this.animateValue(this.dom.xpText, prevObj.oldXp || 0, this.state.currentXp, 400);
             this.animateValue(this.dom.totalTasksDisplay, prevObj.oldTasks || 0, this.state.totalTasksCompleted, 300);
             this.animateValue(this.dom.coinsDisplay, prevObj.oldCoins || 0, this.state.coins, 500);
+            if (this.dom.shopCoinsDisplay) this.dom.shopCoinsDisplay.textContent = this.state.coins;
         }
 
         this.updateHappinessUI();

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevPet Floating Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="floating.css">
+</head>
+<body>
+    <div id="floating-pet-root" class="floating-pet-card">
+        <!-- Drag Handle & Quick Header -->
+        <div class="drag-bar" id="drag-bar" title="Drag to reposition pet on desktop">
+            <span class="pet-name">CodeBuddy</span>
+            <div class="top-controls no-drag">
+                <button id="btn-open-dash" class="icon-btn" title="Open Main Dashboard" aria-label="Open Dashboard">📊</button>
+                <button id="btn-minimize-pet" class="icon-btn" title="Hide Pet to System Tray" aria-label="Hide to Tray">➖</button>
+                <button id="btn-close-app" class="icon-btn text-error" title="Exit DevPet" aria-label="Exit Application">✕</button>
+            </div>
+        </div>
+
+        <!-- Dialogue Bubble -->
+        <div id="floating-bubble" class="floating-bubble hidden" role="status"></div>
+
+        <!-- Random Spawn Event Widget -->
+        <div id="floating-event" class="floating-event hidden no-drag" role="button" tabindex="0"></div>
+
+        <!-- Pet Character Stage -->
+        <div class="pet-center-stage" id="pet-stage">
+            <div class="pet-wrapper" id="pet-container" role="img" aria-label="CodeBuddy desktop pet">
+                <!-- Base Pet SVG -->
+                <svg class="pet-svg" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Body -->
+                    <rect class="pet-body" x="6" y="8" width="12" height="10" fill="var(--color-primary, #00f0ff)" />
+                    <!-- Screen/Face area -->
+                    <rect x="8" y="10" width="8" height="5" fill="var(--color-bg, #0b0d13)" />
+                    <!-- Eyes -->
+                    <rect class="pet-eye" id="eye-left" x="9" y="11" width="2" height="2" fill="var(--color-accent, #00ff9f)" />
+                    <rect class="pet-eye" id="eye-right" x="13" y="11" width="2" height="2" fill="var(--color-accent, #00ff9f)" />
+                    <!-- Mouth -->
+                    <rect class="pet-mouth" id="mouth" x="10" y="14" width="4" height="1" fill="var(--color-accent, #00ff9f)" />
+                    <!-- Antenna -->
+                    <rect x="11" y="4" width="2" height="4" fill="var(--color-text, #e2e8f0)" />
+                    <rect x="11" y="2" width="2" height="2" fill="var(--color-warning, #ffb800)" />
+                    <!-- Legs -->
+                    <rect class="pet-leg" x="7" y="18" width="2" height="4" fill="var(--color-text, #e2e8f0)" />
+                    <rect class="pet-leg" x="15" y="18" width="2" height="4" fill="var(--color-text, #e2e8f0)" />
+                </svg>
+
+                <!-- Accessories Layer -->
+                <div id="accessory-layer">
+                    <!-- Retro Cap SVG -->
+                    <svg id="acc-hat" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                        <rect x="4" y="6" width="16" height="2" fill="#555" />
+                        <rect x="8" y="2" width="8" height="4" fill="#666" />
+                        <rect x="8" y="5" width="8" height="1" fill="#ffb800" />
+                    </svg>
+
+                    <!-- Top Hat SVG -->
+                    <svg id="acc-hat2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                        <rect x="4" y="7" width="16" height="2" fill="#222" />
+                        <rect x="7" y="1" width="10" height="6" fill="#111" />
+                        <rect x="7" y="6" width="10" height="1" fill="#ff0055" />
+                    </svg>
+
+                    <!-- Cyber Shades SVG -->
+                    <svg id="acc-glasses" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                        <rect x="7" y="10" width="4" height="3" fill="#ffb800" />
+                        <rect x="13" y="10" width="4" height="3" fill="#ffb800" />
+                        <rect x="11" y="10" width="2" height="1" fill="#ffb800" />
+                        <rect x="6" y="10" width="1" height="1" fill="#ffb800" />
+                        <rect x="17" y="10" width="1" height="1" fill="#ffb800" />
+                    </svg>
+
+                    <!-- Neon Shades SVG -->
+                    <svg id="acc-shades2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                        <rect x="6" y="10" width="12" height="3" fill="#ff0055" />
+                        <rect x="7" y="11" width="10" height="1" fill="#ffffff" />
+                    </svg>
+
+                    <!-- Crown SVG -->
+                    <svg id="acc-crown" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                        <rect x="7" y="3" width="2" height="4" fill="gold" />
+                        <rect x="11" y="2" width="2" height="5" fill="gold" />
+                        <rect x="15" y="3" width="2" height="4" fill="gold" />
+                        <rect x="6" y="7" width="12" height="2" fill="gold" />
+                    </svg>
+                </div>
+            </div>
+            <div id="sleep-indicator" class="sleep-indicator hidden" aria-hidden="true">Zzz...</div>
+        </div>
+
+        <!-- Quick Status & CPS Rank Pill -->
+        <div class="status-bar no-drag">
+            <div class="stat-pill">
+                <span class="pill-label">LVL</span>
+                <span id="fw-level" class="pill-val text-accent">1</span>
+            </div>
+            <div class="stat-pill">
+                <span class="pill-label">XP</span>
+                <span id="fw-xp" class="pill-val text-primary">0/100</span>
+            </div>
+            <div class="stat-pill" id="cps-badge-pill" title="Competitive Profile System Rating">
+                <span id="fw-cps-tier-badge">🥉</span>
+                <span id="fw-cps-rating" class="pill-val">1040</span>
+            </div>
+            <div class="stat-pill">
+                <span>🪙</span>
+                <span id="fw-coins" class="pill-val text-warning">0</span>
+            </div>
+        </div>
+
+        <!-- Action Row -->
+        <div class="actions-row no-drag">
+            <button id="btn-quick-task" class="quick-btn btn-primary" title="Complete current task or log progress">
+                + TASK
+            </button>
+            <button id="btn-quick-pomo" class="quick-btn btn-secondary" title="Start/Pause Pomodoro Session">
+                🍅 <span id="fw-pomo-time">25:00</span>
+            </button>
+            <button id="btn-pet-interact" class="quick-btn btn-action" title="Pet Companion">
+                ❤️
+            </button>
+        </div>
+    </div>
+
+    <script src="floating.js"></script>
+</body>
+</html>

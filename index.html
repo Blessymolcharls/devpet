@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevPet (CodeBuddy) - Gamified Developer Companion</title>
-    <meta name="description" content="A gamified retro cyberpunk virtual pet companion for developers with Pomodoro focus timer, tasks, achievements, and shop.">
+    <title>DevPet 2.0 (CodeBuddy) - Gamified Developer Desktop Companion</title>
+    <meta name="description" content="A gamified retro cyberpunk virtual pet desktop companion for developers with Pomodoro focus timer, task system, coin economy, and Competitive Profiles (CPS).">
     <meta name="theme-color" content="#0b0d13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <!-- Parallax Background System -->
@@ -29,9 +29,10 @@
                 <option value="forest">Forest</option>
             </select>
             <button id="btn-mute" class="toggle-btn" aria-label="Toggle Sound" title="Toggle Sound">🔊</button>
+            <span id="env-mode-badge" class="env-badge" title="Platform Status">DESKTOP READY</span>
         </div>
         <div class="nav-right">
-            <button id="btn-floating" class="toggle-btn" aria-label="Enter Float Mode">FLOAT MODE</button>
+            <button id="btn-floating" class="toggle-btn" aria-label="Toggle Floating Pet Overlay">FLOAT PET</button>
             <button id="btn-export" class="toggle-btn" aria-label="Export Save Data">EXPORT</button>
             <label class="toggle-btn" for="btn-import" tabindex="0" role="button" aria-label="Import Save Data">
                 IMPORT <input type="file" id="btn-import" accept=".json" class="sr-only">
@@ -88,10 +89,16 @@
                 </div>
             </section>
 
-            <button id="btn-task" class="action-button retro-button">
-                [ COMPLETE CODING TASK ]
-            </button>
-            <div class="total-tasks">Total Tasks: <span id="total-tasks-display">0</span></div>
+            <!-- Task Quick Actions -->
+            <div class="task-cta-container">
+                <button id="btn-task" class="action-button retro-button" title="Complete current task or log progress">
+                    [ COMPLETE CODING TASK ]
+                </button>
+                <button id="btn-add-task-open" class="toggle-btn text-accent" style="width: 100%; margin-top: 6px;" title="Create a new task with details">
+                    ➕ ADD TASK
+                </button>
+            </div>
+            <div class="total-tasks">Total Completed: <span id="total-tasks-display">0</span></div>
         </header>
 
         <!-- Pet Stage Center -->
@@ -105,68 +112,68 @@
             <div class="pet-room">
                 <div class="pet-platform" aria-hidden="true"></div>
                 <div class="pet-container" id="pet-container" role="img" aria-label="CodeBuddy pixel pet">
-                <!-- Base Pet SVG -->
-                <svg class="pet-svg" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Body -->
-                    <rect class="pet-body" x="6" y="8" width="12" height="10" fill="var(--color-primary)" />
-                    <!-- Screen/Face area -->
-                    <rect x="8" y="10" width="8" height="5" fill="var(--color-bg)" />
-                    <!-- Eyes -->
-                    <rect class="pet-eye" id="eye-left" x="9" y="11" width="2" height="2" fill="var(--color-accent)" />
-                    <rect class="pet-eye" id="eye-right" x="13" y="11" width="2" height="2" fill="var(--color-accent)" />
-                    <!-- Mouth (changes based on expression) -->
-                    <rect class="pet-mouth" id="mouth" x="10" y="14" width="4" height="1" fill="var(--color-accent)" />
-                    <!-- Antenna -->
-                    <rect x="11" y="4" width="2" height="4" fill="var(--color-text)" />
-                    <rect x="11" y="2" width="2" height="2" fill="var(--color-warning)" />
-                    <!-- Legs -->
-                    <rect class="pet-leg" x="7" y="18" width="2" height="4" fill="var(--color-text)" />
-                    <rect class="pet-leg" x="15" y="18" width="2" height="4" fill="var(--color-text)" />
-                </svg>
-
-                <!-- Accessories Layer -->
-                <div id="accessory-layer">
-                    <!-- Retro Cap SVG -->
-                    <svg id="acc-hat" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="4" y="6" width="16" height="2" fill="#555" />
-                        <rect x="8" y="2" width="8" height="4" fill="#666" />
-                        <rect x="8" y="5" width="8" height="1" fill="var(--color-warning)" />
+                    <!-- Base Pet SVG -->
+                    <svg class="pet-svg" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Body -->
+                        <rect class="pet-body" x="6" y="8" width="12" height="10" fill="var(--color-primary)" />
+                        <!-- Screen/Face area -->
+                        <rect x="8" y="10" width="8" height="5" fill="var(--color-bg)" />
+                        <!-- Eyes -->
+                        <rect class="pet-eye" id="eye-left" x="9" y="11" width="2" height="2" fill="var(--color-accent)" />
+                        <rect class="pet-eye" id="eye-right" x="13" y="11" width="2" height="2" fill="var(--color-accent)" />
+                        <!-- Mouth (changes based on expression) -->
+                        <rect class="pet-mouth" id="mouth" x="10" y="14" width="4" height="1" fill="var(--color-accent)" />
+                        <!-- Antenna -->
+                        <rect x="11" y="4" width="2" height="4" fill="var(--color-text)" />
+                        <rect x="11" y="2" width="2" height="2" fill="var(--color-warning)" />
+                        <!-- Legs -->
+                        <rect class="pet-leg" x="7" y="18" width="2" height="4" fill="var(--color-text)" />
+                        <rect class="pet-leg" x="15" y="18" width="2" height="4" fill="var(--color-text)" />
                     </svg>
 
-                    <!-- Top Hat SVG (Shop item: acc-hat2) -->
-                    <svg id="acc-hat2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="4" y="7" width="16" height="2" fill="#222" />
-                        <rect x="7" y="1" width="10" height="6" fill="#111" />
-                        <rect x="7" y="6" width="10" height="1" fill="var(--color-error)" />
-                    </svg>
+                    <!-- Accessories Layer -->
+                    <div id="accessory-layer">
+                        <!-- Retro Cap SVG -->
+                        <svg id="acc-hat" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                            <rect x="4" y="6" width="16" height="2" fill="#555" />
+                            <rect x="8" y="2" width="8" height="4" fill="#666" />
+                            <rect x="8" y="5" width="8" height="1" fill="var(--color-warning)" />
+                        </svg>
 
-                    <!-- Cyber Shades SVG -->
-                    <svg id="acc-glasses" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="7" y="10" width="4" height="3" fill="var(--color-warning)" />
-                        <rect x="13" y="10" width="4" height="3" fill="var(--color-warning)" />
-                        <rect x="11" y="10" width="2" height="1" fill="var(--color-warning)" />
-                        <rect x="6" y="10" width="1" height="1" fill="var(--color-warning)" />
-                        <rect x="17" y="10" width="1" height="1" fill="var(--color-warning)" />
-                    </svg>
+                        <!-- Top Hat SVG (Shop item: acc-hat2) -->
+                        <svg id="acc-hat2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                            <rect x="4" y="7" width="16" height="2" fill="#222" />
+                            <rect x="7" y="1" width="10" height="6" fill="#111" />
+                            <rect x="7" y="6" width="10" height="1" fill="var(--color-error)" />
+                        </svg>
 
-                    <!-- Neon Shades SVG (Shop item: acc-shades2) -->
-                    <svg id="acc-shades2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="6" y="10" width="12" height="3" fill="var(--color-error)" />
-                        <rect x="7" y="11" width="10" height="1" fill="#ffffff" />
-                    </svg>
+                        <!-- Cyber Shades SVG -->
+                        <svg id="acc-glasses" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                            <rect x="7" y="10" width="4" height="3" fill="var(--color-warning)" />
+                            <rect x="13" y="10" width="4" height="3" fill="var(--color-warning)" />
+                            <rect x="11" y="10" width="2" height="1" fill="var(--color-warning)" />
+                            <rect x="6" y="10" width="1" height="1" fill="var(--color-warning)" />
+                            <rect x="17" y="10" width="1" height="1" fill="var(--color-warning)" />
+                        </svg>
 
-                    <!-- Crown SVG -->
-                    <svg id="acc-crown" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="7" y="3" width="2" height="4" fill="gold" />
-                        <rect x="11" y="2" width="2" height="5" fill="gold" />
-                        <rect x="15" y="3" width="2" height="4" fill="gold" />
-                        <rect x="6" y="7" width="12" height="2" fill="gold" />
-                        <rect x="7" y="3" width="2" height="2" fill="var(--color-warning)" />
-                        <rect x="11" y="2" width="2" height="2" fill="var(--color-accent)" />
-                        <rect x="15" y="3" width="2" height="2" fill="var(--color-primary)" />
-                    </svg>
+                        <!-- Neon Shades SVG (Shop item: acc-shades2) -->
+                        <svg id="acc-shades2" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                            <rect x="6" y="10" width="12" height="3" fill="var(--color-error)" />
+                            <rect x="7" y="11" width="10" height="1" fill="#ffffff" />
+                        </svg>
+
+                        <!-- Crown SVG -->
+                        <svg id="acc-crown" class="accessory hidden" viewBox="0 0 24 24" shape-rendering="crispEdges">
+                            <rect x="7" y="3" width="2" height="4" fill="gold" />
+                            <rect x="11" y="2" width="2" height="5" fill="gold" />
+                            <rect x="15" y="3" width="2" height="4" fill="gold" />
+                            <rect x="6" y="7" width="12" height="2" fill="gold" />
+                            <rect x="7" y="3" width="2" height="2" fill="var(--color-warning)" />
+                            <rect x="11" y="2" width="2" height="2" fill="var(--color-accent)" />
+                            <rect x="15" y="3" width="2" height="2" fill="var(--color-primary)" />
+                        </svg>
+                    </div>
                 </div>
-            </div>
             </div>
             <div id="sleep-particles" class="hidden" aria-hidden="true"></div>
         </main>
@@ -174,16 +181,54 @@
         <!-- Right / Bottom Columns: Tabs -->
         <aside class="side-panel panel" aria-label="Game Tabs">
             <div class="tabs-header" role="tablist">
-                <button class="tab-btn active" role="tab" aria-selected="true" data-tab="shop">SHOP</button>
+                <button class="tab-btn active" role="tab" aria-selected="true" data-tab="tasks">TASKS</button>
+                <button class="tab-btn" role="tab" aria-selected="false" data-tab="shop">SHOP</button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab="inventory">INV</button>
+                <button class="tab-btn" role="tab" aria-selected="false" data-tab="cps">CPS</button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab="achievements">ACH</button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab="challenges">CHAL</button>
                 <button class="tab-btn" role="tab" aria-selected="false" data-tab="stats">STATS</button>
             </div>
             
             <div class="tab-content-container">
+                <!-- Tasks Tab -->
+                <section id="tab-tasks" class="tab-content active" role="tabpanel">
+                    <div class="tab-section-header">
+                        <h2>TASK MANAGEMENT</h2>
+                        <button id="btn-add-task-tab" class="toggle-btn text-accent">➕ NEW TASK</button>
+                    </div>
+
+                    <!-- Tasks Filter & Sorting Bar -->
+                    <div class="tasks-toolbar">
+                        <div class="filter-group">
+                            <button class="filter-chip active" data-filter="all">All</button>
+                            <button class="filter-chip" data-filter="active">Active</button>
+                            <button class="filter-chip" data-filter="completed">Completed</button>
+                            <button class="filter-chip" data-filter="high">High Priority</button>
+                        </div>
+                        <div class="sort-group">
+                            <label for="task-sort-select" class="sr-only">Sort Tasks</label>
+                            <select id="task-sort-select" class="retro-select">
+                                <option value="created-desc">Newest First</option>
+                                <option value="created-asc">Oldest First</option>
+                                <option value="priority-desc">Priority (High to Low)</option>
+                                <option value="due-date-asc">Due Date</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Task List -->
+                    <div class="tasks-list" id="tasks-list">
+                        <!-- Dynamic task cards inserted by JS -->
+                    </div>
+                </section>
+
                 <!-- Shop Tab -->
-                <section id="tab-shop" class="tab-content active" role="tabpanel">
+                <section id="tab-shop" class="tab-content" role="tabpanel">
+                    <div class="shop-balance-banner">
+                        <span>AVAILABLE COINS:</span>
+                        <strong class="text-warning"><span id="shop-coins-display">0</span> 🪙</strong>
+                    </div>
                     <h2>IN-GAME SHOP</h2>
                     <div class="shop-grid" id="shop-grid">
                         <!-- Items injected by JS -->
@@ -192,14 +237,208 @@
 
                 <!-- Inventory Tab (merged with Collectibles) -->
                 <section id="tab-inventory" class="tab-content" role="tabpanel">
-                    <h2>INVENTORY</h2>
+                    <h2>INVENTORY & ACCESSORIES</h2>
                     <div class="inventory-grid" id="inventory-grid">
                         <!-- Items injected by JS -->
                     </div>
                     
-                    <h2 style="margin-top: 1rem;">COLLECTIBLES</h2>
+                    <h2 style="margin-top: 1.25rem;">COLLECTIBLES</h2>
                     <div class="collectibles-grid" id="collectibles-grid">
                         <!-- Collectibles injected by JS -->
+                    </div>
+                </section>
+
+                <!-- CPS Tab (Competitive Profiles) -->
+                <section id="tab-cps" class="tab-content" role="tabpanel">
+                    <div class="tab-section-header">
+                        <h2>COMPETITIVE PROFILE SYSTEM (CPS)</h2>
+                    </div>
+
+                    <!-- CPS Empty State (Shown when no profile exists) -->
+                    <div id="cps-empty-view" class="cps-empty-card panel hidden">
+                        <div class="cps-empty-icon">🏆</div>
+                        <h3>NO COMPETITIVE PROFILE</h3>
+                        <p>Create your unique developer identity to unlock local benchmarks, track verified coding milestones, and showcase your skill tier.</p>
+                        <button id="btn-cps-create-first" class="action-button retro-button" style="margin-top: 1rem;">
+                            [ ➕ CREATE COMPETITIVE PROFILE ]
+                        </button>
+                    </div>
+
+                    <!-- CPS Active Profile View -->
+                    <div id="cps-active-view" class="cps-main-container">
+                        <!-- Profile Switcher & Actions Toolbar -->
+                        <div class="cps-toolbar panel">
+                            <div class="cps-switcher-group">
+                                <label for="cps-profile-select" class="sr-only">Active Profile</label>
+                                <select id="cps-profile-select" class="retro-select" title="Switch Local Profile"></select>
+                            </div>
+                            <div class="cps-toolbar-actions">
+                                <button id="btn-cps-new-profile" class="toggle-btn text-accent" title="Create another local profile">➕ NEW</button>
+                                <button id="btn-edit-cps" class="toggle-btn text-primary" title="Edit active profile">✏️ EDIT</button>
+                                <button id="btn-delete-cps" class="toggle-btn text-error" title="Delete active profile">🗑️</button>
+                            </div>
+                        </div>
+
+                        <!-- CPS Sub-Navigation -->
+                        <div class="cps-subnav" role="tablist">
+                            <button class="cps-subnav-btn active" data-cps-sub="overview">OVERVIEW</button>
+                            <button class="cps-subnav-btn" data-cps-sub="stats">STATS &amp; RECORDS</button>
+                            <button class="cps-subnav-btn" data-cps-sub="leaderboard">LOCAL LEADERBOARD</button>
+                            <button class="cps-subnav-btn" data-cps-sub="challenges">CHALLENGES</button>
+                        </div>
+
+                        <!-- Sub-View 1: Profile Overview -->
+                        <div id="cps-sub-overview" class="cps-subview active">
+                            <div class="cps-card panel">
+                                <div class="cps-header">
+                                    <div class="cps-avatar-ring">
+                                        <span class="cps-avatar-symbol" id="cps-avatar-display">🤖</span>
+                                    </div>
+                                    <div class="cps-user-meta">
+                                        <div class="cps-name-row">
+                                            <h3 id="cps-name-display">DevCoder</h3>
+                                            <span class="cps-username-chip" id="cps-username-display">@devcoder</span>
+                                        </div>
+                                        <div class="cps-title-badge" id="cps-title-display">Bronze Developer</div>
+                                        <div class="cps-specialty" id="cps-specialty-display">Full-Stack Developer</div>
+                                    </div>
+                                    <div class="cps-rating-box">
+                                        <div class="cps-rating-val text-accent" id="cps-rating-display">1040</div>
+                                        <div class="cps-rating-lbl">CPS RATING</div>
+                                    </div>
+                                </div>
+
+                                <!-- Progress Bar to Next Tier -->
+                                <div class="cps-tier-progress-wrap">
+                                    <div class="cps-tier-info">
+                                        <span>Tier: <strong id="cps-current-tier-name">Bronze</strong> <span id="cps-tier-emblem">🥉</span></span>
+                                        <span>Next: <strong id="cps-next-tier-name">Silver (1100)</strong></span>
+                                    </div>
+                                    <div class="progress-bar-container" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="progress-bar" id="cps-tier-progress-bar" style="width: 25%; background: var(--color-accent);"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Bio -->
+                                <p class="cps-bio" id="cps-bio-display">Coding alongside my floating desktop companion.</p>
+
+                                <!-- Competitive Platform Links -->
+                                <div class="cps-links-row">
+                                    <span class="cps-link-chip" id="cps-github-link">🔗 GitHub: Not linked</span>
+                                    <span class="cps-link-chip" id="cps-leetcode-link">🏆 LeetCode: Not linked</span>
+                                    <span class="cps-link-chip" id="cps-codeforces-link">⚡ Codeforces: Not linked</span>
+                                </div>
+
+                                <div class="cps-id-badge">ID: <span id="cps-uid-display">prof_default</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Sub-View 2: Competitive Statistics & Records -->
+                        <div id="cps-sub-stats" class="cps-subview hidden">
+                            <div class="cps-stats-sections">
+                                <!-- Lifetime Totals -->
+                                <div class="stats-card-group panel">
+                                    <h4>LIFETIME TOTALS</h4>
+                                    <div class="cps-stats-grid">
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-primary" id="cps-stat-tasks">0</span>
+                                            <span class="cps-stat-label">Tasks Logged</span>
+                                        </div>
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-accent" id="cps-stat-total-xp">0</span>
+                                            <span class="cps-stat-label">Cumulative XP</span>
+                                        </div>
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-warning" id="cps-stat-total-coins">0</span>
+                                            <span class="cps-stat-label">Coins Won</span>
+                                        </div>
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-error" id="cps-stat-focus-hrs">0h</span>
+                                            <span class="cps-stat-label">Focus Playtime</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Current State -->
+                                <div class="stats-card-group panel">
+                                    <h4>CURRENT STATE</h4>
+                                    <div class="cps-stats-grid">
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-error" id="cps-stat-curr-streak">0d</span>
+                                            <span class="cps-stat-label">Active Streak</span>
+                                        </div>
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-accent" id="cps-stat-level">1</span>
+                                            <span class="cps-stat-label">Companion Level</span>
+                                        </div>
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-primary" id="cps-stat-happiness">100%</span>
+                                            <span class="cps-stat-label">Happiness</span>
+                                        </div>
+                                        <div class="cps-stat-item">
+                                            <span class="cps-stat-num text-warning" id="cps-stat-rating-calc">1040</span>
+                                            <span class="cps-stat-label">CPS Score</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Records & Milestones -->
+                                <div class="stats-card-group panel">
+                                    <h4>PERSONAL RECORDS &amp; MILESTONES</h4>
+                                    <div class="cps-milestones-row">
+                                        <div class="milestone-badge" id="ms-best-streak">
+                                            <span class="ms-icon">🔥</span>
+                                            <span class="ms-title">Best Streak</span>
+                                            <strong class="text-error" id="cps-stat-best-streak">0 Days</strong>
+                                        </div>
+                                        <div class="milestone-badge" id="ms-achievements">
+                                            <span class="ms-icon">🏆</span>
+                                            <span class="ms-title">Achievements</span>
+                                            <strong class="text-warning" id="cps-stat-ach-count">0 / 5</strong>
+                                        </div>
+                                        <div class="milestone-badge" id="ms-first-code">
+                                            <span class="ms-icon">🐣</span>
+                                            <span class="ms-title">First Task</span>
+                                            <strong class="text-accent" id="cps-stat-first-task">Unlocked</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sub-View 3: Local Leaderboard -->
+                        <div id="cps-sub-leaderboard" class="cps-subview hidden">
+                            <!-- Local Scope Notice -->
+                            <div class="leaderboard-scope-banner">
+                                <span>🔒 LOCAL DEVICE SCOPE</span>
+                                <small>Ranks local profiles on this system. Zero simulated or fabricated entries.</small>
+                            </div>
+
+                            <div class="leaderboard-controls">
+                                <label for="leaderboard-sort-select">Rank by:</label>
+                                <select id="leaderboard-sort-select" class="retro-select">
+                                    <option value="rating">CPS Rating</option>
+                                    <option value="tasks">Tasks Completed</option>
+                                    <option value="streak">Best Streak</option>
+                                    <option value="level">Pet Level</option>
+                                </select>
+                            </div>
+
+                            <div class="leaderboard-list" id="leaderboard-list">
+                                <!-- Ranked entries inserted by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Sub-View 4: Competitive Challenges -->
+                        <div id="cps-sub-challenges" class="cps-subview hidden">
+                            <div class="challenges-section-header">
+                                <h4>SPRINT COMPETITIONS</h4>
+                                <span class="stat-subtext">Verified objective milestones</span>
+                            </div>
+                            <div class="competitive-challenges-list" id="competitive-challenges-list">
+                                <!-- Challenge cards inserted by JS -->
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -237,7 +476,7 @@
         </aside>
     </div>
 
-    <!-- Modals & Toasts -->
+    <!-- LEVEL UP MODAL -->
     <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content panel">
             <h1 class="text-warning" id="modal-title">LEVEL UP!</h1>
@@ -247,9 +486,169 @@
         </div>
     </div>
 
+    <!-- TASK CREATE / EDIT MODAL -->
+    <div id="task-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="task-modal-heading">
+        <div class="modal-content panel task-modal-card">
+            <h2 id="task-modal-heading" class="text-primary">ADD NEW TASK</h2>
+            
+            <form id="task-form" novalidate>
+                <div class="form-group">
+                    <label for="task-title-input">Task Title <span class="text-error">*</span></label>
+                    <input type="text" id="task-title-input" class="retro-input" placeholder="e.g. Implement authentication middleware" maxlength="120" required>
+                    <span class="inline-error hidden" id="task-title-error">Task title cannot be empty.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="task-desc-input">Description (Optional)</label>
+                    <textarea id="task-desc-input" class="retro-textarea" rows="2" placeholder="Details, notes, or PR links..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="task-priority-select">Priority</label>
+                        <select id="task-priority-select" class="retro-select">
+                            <option value="low">Low Priority</option>
+                            <option value="medium" selected>Medium Priority</option>
+                            <option value="high">High Priority</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="task-category-select">Category</label>
+                        <select id="task-category-select" class="retro-select">
+                            <option value="Feature" selected>Feature</option>
+                            <option value="Bugfix">Bugfix</option>
+                            <option value="Refactor">Refactor</option>
+                            <option value="Docs">Documentation</option>
+                            <option value="Learning">Learning</option>
+                            <option value="General">General</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="task-due-input">Due Date (Optional)</label>
+                        <input type="date" id="task-due-input" class="retro-input">
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="task-duration-input">Est. Duration (Min)</label>
+                        <input type="number" id="task-duration-input" class="retro-input" min="1" max="1440" placeholder="e.g. 30">
+                    </div>
+                </div>
+
+                <div class="modal-actions-row">
+                    <button type="button" id="btn-cancel-task" class="toggle-btn">Cancel</button>
+                    <button type="submit" id="btn-save-task" class="action-button retro-button">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CREATE / EDIT CPS PROFILE MODAL -->
+    <div id="cps-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="cps-modal-heading">
+        <div class="modal-content panel task-modal-card">
+            <h2 id="cps-modal-heading" class="text-accent">CREATE COMPETITIVE PROFILE</h2>
+            
+            <form id="cps-form" novalidate>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="cps-name-input">Display Name <span class="text-error">*</span></label>
+                        <input type="text" id="cps-name-input" class="retro-input" maxlength="30" placeholder="e.g. Cyber Ninja" required>
+                        <span class="inline-error hidden" id="cps-name-error">Display name is required (max 30 chars).</span>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label for="cps-username-input">Unique Username <span class="text-error">*</span></label>
+                        <input type="text" id="cps-username-input" class="retro-input" maxlength="20" placeholder="e.g. cyber_ninja" required>
+                        <span class="inline-error hidden" id="cps-username-error">Username must be 3-20 alphanumeric characters and unique.</span>
+                    </div>
+                </div>
+
+                <!-- Avatar Selection -->
+                <div class="form-group">
+                    <label>Choose Competitive Avatar</label>
+                    <div class="avatar-picker-grid" id="cps-avatar-picker">
+                        <button type="button" class="avatar-opt-btn active" data-avatar="🤖">🤖</button>
+                        <button type="button" class="avatar-opt-btn" data-avatar="👾">👾</button>
+                        <button type="button" class="avatar-opt-btn" data-avatar="🐱">🐱</button>
+                        <button type="button" class="avatar-opt-btn" data-avatar="🦊">🦊</button>
+                        <button type="button" class="avatar-opt-btn" data-avatar="⚡">⚡</button>
+                        <button type="button" class="avatar-opt-btn" data-avatar="🛡️">🛡️</button>
+                        <button type="button" class="avatar-opt-btn" data-avatar="🚀">🚀</button>
+                        <button type="button" class="avatar-opt-btn" data-avatar="💎">💎</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cps-specialty-input">Specialty / Role</label>
+                    <select id="cps-specialty-input" class="retro-select">
+                        <option value="Full-Stack Developer">Full-Stack Developer</option>
+                        <option value="Backend Specialist">Backend Specialist</option>
+                        <option value="Frontend Architect">Frontend Architect</option>
+                        <option value="Systems & Core Engineer">Systems & Core Engineer</option>
+                        <option value="DevOps & Cloud Ninja">DevOps & Cloud Ninja</option>
+                        <option value="AI & Machine Learning">AI & Machine Learning</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cps-bio-input">Short Bio (Max 160 chars)</label>
+                    <textarea id="cps-bio-input" class="retro-textarea" rows="2" maxlength="160" placeholder="Competitive philosophy, focus area, or personal motto..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="cps-github-input">GitHub Username</label>
+                        <input type="text" id="cps-github-input" class="retro-input" placeholder="e.g. octocat">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="cps-leetcode-input">LeetCode Username</label>
+                        <input type="text" id="cps-leetcode-input" class="retro-input" placeholder="e.g. neetcode">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cps-codeforces-input">Codeforces Username</label>
+                    <input type="text" id="cps-codeforces-input" class="retro-input" placeholder="e.g. tourist">
+                </div>
+
+                <div class="modal-actions-row">
+                    <button type="button" id="btn-cancel-cps" class="toggle-btn">Cancel</button>
+                    <button type="submit" id="btn-save-cps" class="action-button retro-button">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONFIRM DELETE PROFILE MODAL -->
+    <div id="cps-delete-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-content panel" style="max-width: 360px;">
+            <h2 class="text-error">DELETE PROFILE</h2>
+            <p style="margin: 12px 0;">Are you sure you want to delete this competitive profile? Your pet's progress and coins will not be affected.</p>
+            <div class="modal-actions-row">
+                <button type="button" id="btn-cancel-delete-cps" class="toggle-btn">Cancel</button>
+                <button type="button" id="btn-confirm-delete-cps" class="retro-button text-error" style="background: rgba(255, 0, 85, 0.2); border-color: var(--color-error);">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFIRM DELETE TASK MODAL -->
+    <div id="delete-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal-content panel" style="max-width: 360px;">
+            <h2 class="text-error">DELETE TASK</h2>
+            <p style="margin: 12px 0;">Are you sure you want to delete this task? This action cannot be undone.</p>
+            <div class="modal-actions-row">
+                <button type="button" id="btn-cancel-delete" class="toggle-btn">Cancel</button>
+                <button type="button" id="btn-confirm-delete" class="retro-button text-error" style="background: rgba(255, 0, 85, 0.2); border-color: var(--color-error);">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Floating Companion Widget -->
+    <!-- In-browser Floating Widget Fallback (preserved for browser development mode) -->
     <div class="floating-widget panel hidden-by-default" id="floating-widget" aria-label="Floating Pet Widget">
         <div class="fw-header">
             <span>CodeBuddy</span>
@@ -272,6 +671,6 @@
         <button id="btn-fw-task" class="toggle-btn text-primary" style="margin-top: 4px; width: 100%;">+ TASK</button>
     </div>
 
-    <script src="script.js?v=2"></script>
+    <script src="script.js?v=3"></script>
 </body>
 </html>

@@ -1,144 +1,160 @@
-# DevPet (CodeBuddy)
+# DevPet 2.0 (CodeBuddy)
 
-> A retro-cyberpunk gamified virtual pet companion and focus productivity system for developers.
+> A retro-cyberpunk gamified virtual pet desktop companion, coin economy, task system, and Competitive Profile System (CPS) for developers.
 
-DevPet brings retro gaming mechanics to coding routines. It rewards completing tasks with companion evolutions, coins, collectibles, and milestone achievements, while integrating a Pomodoro focus timer and ambient audio synthesis.
-
----
-
-## Verified Features
-
-### 🐾 Virtual Companion Mechanics
-- **Pixel-Art SVG Companion**: Scalable crisp-pixel companion rendered natively in SVG with dynamic eyes, mouth, and antenna.
-- **Companion Evolutions**: Automatic visual scaling and evolution badges at **Level 10** (Junior), **Level 30** (Advanced), and **Level 50** (Legendary).
-- **Expressive Mood System**: Responsive animations reflecting companion state:
-  - `idle`: Gentle vertical floating.
-  - `happy`: Excited bouncing upon task completion.
-  - `excited`: 360° spin jump on level up.
-  - `curious`: Tilt animation during random events.
-  - `focused`: Heightened contrast glow during active Pomodoro sessions.
-  - `tired`: Dimmed swaying when happiness is low.
-  - `sleeping`: Lowered opacity, dimmed posture, and floating `Zzz` particles after 60 seconds of inactivity.
-- **Interactive Random Events**: Clickable event spawns including **Bug Catch (+15🪙)**, **Coffee Boost (+10🪙)**, and **Lucky Gem (+50🪙)**.
-
-### ⏱️ Developer Productivity Tools
-- **Task Tracker**: Log completed coding tasks to award +20 XP, +10 Happiness, and streak-scaled coins.
-- **Pomodoro Focus Timer**: 25-minute and 50-minute session presets with chiptune synthesized alerts, active countdown, and completion rewards (+50 XP, +25🪙, +25 Happiness).
-- **Calendar-Based Daily Streak**: Deterministic calendar-day streak tracking that rewards daily coding consistency without double-counting on same-day refreshes.
-- **Float Mode Widget**: Compact bottom-right companion widget with real-time XP and a quick `+ TASK` button designed to float next to an editor.
-
-### 🛍️ Economy, Cosmetics & Collectibles
-- **In-Game Shop**: Spend coins on cosmetics including **Top Hat** (150🪙), **Neon Shades** (150🪙), **Space Background** (100🪙), and **Forest Background** (100🪙).
-- **Inventory System**: Equip and unequip owned hats, shades, crowns, and custom parallax backgrounds.
-- **Collectibles Loot Drops**: 10% chance per task to discover collectible relics:
-  - Common: *Golden Floppy*, *Debug Duck*
-  - Rare: *Syntax Potion*
-  - Epic: *RAM Stick*
-  - Legendary: *Glitch Shard*
-
-### 🏆 Achievements & Challenges
-- **Milestone Achievements**:
-  - `First Code` (1 task)
-  - `Code Monkey` (5 tasks)
-  - `Script Kiddie` (10 tasks)
-  - `Stack Overflow Sr.` (25 tasks)
-  - `Linus Mode` (50 tasks)
-- **Weekly Challenges**: Goal progression for cumulative task completions and companion level thresholds.
-- **Statistics Dashboard**: Real-time display of tasks completed, cumulative XP, companion level, happiness %, coin purse, best streak, unlocked achievements, and active session playtime.
-
-### 🎵 Audio Synthesis & Visual Themes
-- **Web Audio Synth Engine**: Zero-dependency browser oscillator synthesizer delivering authentic square, sine, and sawtooth 8-bit sound effects.
-- **Theme Switcher**: Instant switching between 5 curated cyberpunk and retro palettes:
-  - `Cyberpunk` (Obsidian, Cyan, Matrix Green, Amber)
-  - `Dark` (Zinc, Sky Blue)
-  - `Retro Green` (Terminal Monochromatic Green)
-  - `Space` (Deep Navy, Magenta, Neon Cyan)
-  - `Forest` (Deep Pine, Emerald Green)
+DevPet 2.0 transforms your coding routines into an engaging cyberpunk RPG companion. It floats directly above your desktop—overlaying VS Code, browsers, and terminal windows—with seamless dragging, transparent click-through protection, coin shop economy, full-featured task management, and Competitive Profiles.
 
 ---
 
-## Technology Stack
+## 🚀 What's New in DevPet 2.0
 
-| Layer | Technology | Details |
+### 1. 🪟 Genuine Desktop Floating Pet Companion
+- **Always-on-Top Frameless Overlay**: Transparent, borderless window hovering above all active applications (VS Code, Chrome, terminals).
+- **Click-Through Transparency**: Mouse clicks pass through transparent regions to underlying windows, while capturing clicks when hovering over the companion and its action buttons.
+- **Persistent Desktop Positioning**: Draggable around the desktop with automatic monitor work-area clamping and position memory between restarts.
+- **Compact Floating Controls**: Quick access to Dashboard (`[📊]`), Hide to Tray (`[➖]`), Exit (`[✕]`), Quick Task logging (`[+ TASK]`), Pomodoro timer toggle (`[🍅]`), and pet interactions (`[❤️]`).
+- **System Tray Integration**: Background tray menu to show/hide pet, restore position, open dashboard, or cleanly exit.
+- **Dual-Mode Compatibility**: Runs as a lightweight native Electron overlay or directly in the browser with fallback widgets.
+
+### 2. 🪙 Fixed & Unified Coin & Background Economy
+- **Live Coin Balance Header**: Prominently displayed in both dashboard and shop views.
+- **Visual Background & Accessory Previews**: Mini color gradients and icon previews for every catalog item.
+- **Re-Purchase Prevention**: Strict validation preventing duplicate purchases and erroneous coin deductions for already-owned items.
+- **Direct Equip / Unequip in Shop**: Owned backgrounds and accessories can be equipped or unequipped without re-spending coins.
+- **Active Background Rendering**: Immediate application of equipped parallax themes (`Space BG` and `Forest BG`) across views.
+- **Zero-Loss Data Migration**: Automatically migrates legacy saves without wiping coin balance, achievements, or collectibles.
+
+### 3. 📋 Comprehensive Task System
+- **Structured Creation Form**:
+  - Task title (with inline validation rejecting empty/whitespace inputs).
+  - Optional description.
+  - Priority levels (`Low`, `Medium`, `High`).
+  - Due date & time support with overdue warning indicators.
+  - Categories (`Feature`, `Bugfix`, `Refactor`, `Docs`, `Learning`, `General`).
+  - Estimated duration (minutes).
+- **Task Management**:
+  - Filter by `All`, `Active`, `Completed`, or `High Priority`.
+  - Sort by `Newest First`, `Oldest First`, `Priority`, or `Due Date`.
+  - Reversible completion checkbox with strike-through styling.
+  - Edit existing tasks via modal dialog.
+  - Delete tasks with safe confirmation modal.
+  - Cyberpunk empty state for zero-task views.
+- **Reward Idempotency**:
+  - Each task awards XP and coins exactly once. Re-opening or editing a completed task prevents infinite reward exploits.
+
+### 4. 🏆 Competitive Profile System (CPS)
+- **Competitive Developer Tier & Rating**:
+  - Calculated based on verified coding achievements, daily streaks, Pomodoro sessions, and companion level.
+  - Tiers: `Bronze` (1000+), `Silver` (1100+), `Gold` (1300+), `Platinum` (1600+), `Diamond` (2000+), `Master` (2400+), `Grandmaster` (2800+).
+- **Customizable Developer Card**:
+  - Developer handle / callsign (e.g., `DevCoder#404`).
+  - Specialty / Role selection (Full-Stack, Backend, Frontend, Systems, DevOps, AI/ML).
+  - Developer bio and philosophy.
+  - Linked competitive platform handles (GitHub, LeetCode, Codeforces).
+  - Real-time rating progress bar toward the next tier.
+  - Live CPS badge and rating shown on the floating desktop companion.
+
+---
+
+## 🛠️ Technology Stack & Architecture
+
+| Component | Technology | Role |
 |---|---|---|
-| **Markup** | HTML5 | Semantic elements, SVG graphics, WCAG ARIA roles |
-| **Styling** | Vanilla CSS3 | Custom CSS variable tokens, glassmorphism, fluid grids |
-| **Logic** | Vanilla ES6+ | Object-oriented modular state architecture |
-| **Audio** | Web Audio API | Zero-asset programmatic oscillator synthesis |
-| **Storage** | Browser `localStorage` | Schema-validated state persistence with JSON export/import |
-| **Testing** | Node.js Test Runner | Native `node:test` and `node:assert` (zero external dependencies) |
+| **Desktop Wrapper** | Electron 44+ | Frameless transparent overlay, IPC state coordinator, System Tray |
+| **Preload Security** | Electron `contextBridge` | Isolated IPC bridge with Node.js integration disabled in renderer |
+| **Companion Renderer** | HTML5 / CSS3 / Vanilla JS | Dedicated floating companion window with click-through control |
+| **Dashboard UI** | HTML5 / CSS3 / Vanilla JS | Full retro-cyberpunk control center and tabs |
+| **Audio Engine** | Web Audio API | Zero-dependency 8-bit oscillator synthesis |
+| **Persistence** | File Storage + `localStorage` | Dual-sync storage in `userData/devpet_state.json` & browser storage |
+| **Test Suite** | Native `node:test` | Automated unit tests covering all core mechanics and state logic |
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 devpet/
-├── index.html        # Main DOM structure, SVG companion definitions, modals, tabs
-├── style.css         # Cyberpunk design system, animations, themes, responsiveness
-├── script.js         # Companion state engine, loops, synth engine, event handling
+├── main.js           # Electron main process: transparent overlay, tray, IPC & state sync
+├── preload.js        # Secure contextBridge API for renderer windows
+├── floating.html     # Dedicated floating desktop companion window markup
+├── floating.css      # Floating companion styling, animations, and drag layout
+├── floating.js       # Floating pet logic, mini timer, and click-through handler
+├── index.html        # Main dashboard DOM: Tasks, Shop, Inv, CPS, Pomodoro, Themes
+├── style.css         # Cyberpunk design system, modals, task cards, and responsive rules
+├── script.js         # Core companion state engine, task management, shop, and CPS
+├── package.json      # Dependencies, start scripts, and metadata
 ├── tests/
-│   └── app.test.js   # Automated unit tests for core game logic and streak math
-└── README.md         # Project documentation and specifications
+│   └── app.test.js   # Automated unit tests for economy, tasks, streak, CPS, and pomo
+└── README.md         # Documentation and guide
 ```
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
-DevPet has no build steps or package installations required to run.
+### 1. Prerequisites
+- **Node.js** (v18 or higher recommended)
+- **npm** (v9 or higher)
 
-### Running Locally
-
-#### Option 1: Direct File
-Open [index.html](file:///c:/Users/bless/GIT/devpet/index.html) directly in any modern browser (Chrome, Edge, Firefox, Safari).
-
-#### Option 2: Local HTTP Server (Recommended)
-Using Python:
+### 2. Installation
+Clone the repository and install dependencies:
 ```bash
-python -m http.server 8080
+git clone https://github.com/Blessymolcharls/devpet.git
+cd devpet
+npm install
 ```
-Using Node.js:
+
+### 3. Launching DevPet 2.0 Desktop Companion
+Launch the native desktop floating pet overlay and dashboard:
+```bash
+npm start
+```
+
+### 4. Running in Web Browser Mode (Alternative)
+To run as a purely browser-based application without Electron:
 ```bash
 npx serve .
+# or
+python -m http.server 8080
 ```
-
-Open your browser and navigate to `http://localhost:8080`.
-
----
-
-## Controls & Keyboard Shortcuts
-
-| Shortcut / Control | Action |
-|---|---|
-| `[ COMPLETE CODING TASK ]` | Complete a task (+20 XP, +10 Happiness, coins) |
-| `Escape` | Dismiss the Level Up modal dialog |
-| `Space` / `Enter` (on Import button) | Open JSON save file picker via keyboard |
-| `Tab` / `Shift + Tab` | Navigate interactive controls with high-contrast `:focus-visible` ring |
-| `FLOAT MODE` / `EXPAND` | Toggle compact floating widget mode |
+Open `http://localhost:8080` or double-click `index.html`.
 
 ---
 
-## Running Automated Tests
+## 🧪 Running Automated Tests
 
-DevPet includes an automated unit test suite verifying state initialization, task calculations, streak calendar rollovers, Pomodoro resets, level-ups, and achievement unlock boundaries.
-
-Run tests using Node.js:
+Run the native Node.js test suite:
 ```bash
-node --test tests/app.test.js
+npm test
 ```
 
+The test suite validates:
+- Initial state integrity and boundary constraints
+- Task completion XP, coin, and happiness calculations
+- Streak tracking across calendar days and rollover resets
+- Shop verification and duplicate purchase prevention
+- Equipping owned backgrounds without duplicate coin deductions
+- Task creation validation, editing, deletion, and empty states
+- Reward idempotency upon unchecking and re-checking tasks
+- CPS rating calculation and tier transitions
+- Pomodoro timer completion and reset behavior
+
 ---
 
-## Accessibility & Responsiveness
+## 🎮 Desktop Companion Controls
 
-- **Keyboard Navigation**: High-contrast `:focus-visible` indicators across all buttons, tabs, and file inputs.
-- **Screen Reader Readiness**: Progress bars expose live `aria-valuenow`, `aria-valuemin="0"`, `aria-valuemax="100"`. Dialogs declare `role="dialog"` and `aria-modal="true"`.
-- **Motion Safety**: Full `@media (prefers-reduced-motion: reduce)` support to suppress non-essential parallax and pet animations.
-- **Responsive Layout**: Fluid CSS Grid and Flexbox layouts designed for desktop (>1200px), tablet (768px - 1200px), and mobile viewports (<768px).
+| Action | Control / Shortcut |
+|---|---|
+| **Drag Pet** | Click and drag the top title bar of the floating pet |
+| **Open Dashboard** | Click `[ 📊 ]` on the floating companion or tray icon |
+| **Minimize Pet** | Click `[ ➖ ]` to hide companion to the system tray |
+| **Exit DevPet** | Click `[ ✕ ]` or select `Quit DevPet` from the system tray |
+| **Quick Task** | Click `[ + TASK ]` on the companion to log progress |
+| **Toggle Focus Timer**| Click `[ 🍅 25:00 ]` on the companion |
+| **Pet Companion** | Click `[ ❤️ ]` or click directly on the pet |
 
 ---
 
-## License
+## 📄 License
 
 MIT License. Free for developer personal and commercial use.

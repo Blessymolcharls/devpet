@@ -1,0 +1,26 @@
+{
+  "name": "devpet",
+  "version": "2.0.0",
+  "description": "DevPet 2.0 - Retro cyberpunk floating desktop pet companion, coin economy, task system, and competitive profiles (CPS) for developers.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/app.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Blessymolcharls/devpet.git"
+  },
+  "keywords": [
+    "desktop-pet",
+    "tamagotchi",
+    "developer-productivity",
+    "electron",
+    "gamification"
+  ],
+  "author": "Blessymolcharls",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.7.0"
+  }
+}
