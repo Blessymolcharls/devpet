@@ -231,6 +231,16 @@ h2 { font-size: 1.5rem; color: var(--color-primary); border-bottom: 1px solid va
     display: none !important;
 }
 
+/* --- Dashboard Fullscreen & Responsive Expansion --- */
+body.fullscreen-mode .top-nav {
+    max-width: 100%;
+}
+
+body.fullscreen-mode .app-container {
+    max-width: 100%;
+    height: calc(100vh - 105px);
+}
+
 /* --- Gamified Stats & Progress Bars --- */
 .stats-panel { gap: 1.2rem; overflow-y: auto; overflow-x: hidden; }
 .stat-group { display: flex; flex-direction: column; gap: 0.5rem; }

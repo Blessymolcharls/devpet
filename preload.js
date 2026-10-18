@@ -54,6 +54,76 @@ contextBridge.exposeInMainWorld('devPetDesktop', {
         ipcRenderer.send('close-dashboard');
     },
 
+    toggleDashboardFullScreen: async () => {
+        try {
+            return await ipcRenderer.invoke('toggle-dashboard-fullscreen');
+        } catch (err) {
+            console.error('[Preload] toggleDashboardFullScreen error:', err);
+            return false;
+        }
+    },
+
+    getDashboardFullScreen: async () => {
+        try {
+            return await ipcRenderer.invoke('get-dashboard-fullscreen');
+        } catch (err) {
+            console.error('[Preload] getDashboardFullScreen error:', err);
+            return false;
+        }
+    },
+
+    toggleDashboardMaximize: async () => {
+        try {
+            return await ipcRenderer.invoke('toggle-dashboard-maximize');
+        } catch (err) {
+            console.error('[Preload] toggleDashboardMaximize error:', err);
+            return false;
+        }
+    },
+
+    getDashboardMaximized: async () => {
+        try {
+            return await ipcRenderer.invoke('get-dashboard-maximized');
+        } catch (err) {
+            console.error('[Preload] getDashboardMaximized error:', err);
+            return false;
+        }
+    },
+
+    minimizeDashboard: () => {
+        ipcRenderer.send('minimize-dashboard');
+    },
+
+    onDashboardFullScreenChanged: (callback) => {
+        if (typeof callback !== 'function') return () => {};
+        const listener = (event, isFs) => {
+            try {
+                callback(Boolean(isFs));
+            } catch (err) {
+                console.error('[Preload] onDashboardFullScreenChanged error:', err);
+            }
+        };
+        ipcRenderer.on('dashboard-fullscreen-changed', listener);
+        return () => {
+            ipcRenderer.removeListener('dashboard-fullscreen-changed', listener);
+        };
+    },
+
+    onDashboardMaximizedChanged: (callback) => {
+        if (typeof callback !== 'function') return () => {};
+        const listener = (event, isMax) => {
+            try {
+                callback(Boolean(isMax));
+            } catch (err) {
+                console.error('[Preload] onDashboardMaximizedChanged error:', err);
+            }
+        };
+        ipcRenderer.on('dashboard-maximized-changed', listener);
+        return () => {
+            ipcRenderer.removeListener('dashboard-maximized-changed', listener);
+        };
+    },
+
     toggleZoom: async () => {
         try {
             return await ipcRenderer.invoke('toggle-pet-zoom');

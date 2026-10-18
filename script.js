@@ -132,6 +132,10 @@ class CodeBuddy {
         this.deletingProfileId = null;
         this.selectedCpsAvatar = '🤖';
 
+        // Window States
+        this.isDashboardFullScreen = false;
+        this.isDashboardMaximized = false;
+
         this.init();
     }
 
@@ -199,6 +203,31 @@ class CodeBuddy {
                     this.applyEquippedBackground();
                 }
             });
+
+            // Listen for window state changes from main process
+            if (window.devPetDesktop.onDashboardFullScreenChanged) {
+                window.devPetDesktop.onDashboardFullScreenChanged((isFs) => {
+                    this.setFullScreenUI(isFs);
+                });
+            }
+
+            if (window.devPetDesktop.onDashboardMaximizedChanged) {
+                window.devPetDesktop.onDashboardMaximizedChanged((isMax) => {
+                    this.setMaximizeUI(isMax);
+                });
+            }
+
+            if (window.devPetDesktop.getDashboardFullScreen) {
+                window.devPetDesktop.getDashboardFullScreen().then(isFs => {
+                    if (isFs) this.setFullScreenUI(true);
+                }).catch(() => {});
+            }
+
+            if (window.devPetDesktop.getDashboardMaximized) {
+                window.devPetDesktop.getDashboardMaximized().then(isMax => {
+                    if (isMax) this.setMaximizeUI(true);
+                }).catch(() => {});
+            }
         } else {
             if (this.dom.envModeBadge) {
                 this.dom.envModeBadge.textContent = 'WEB BROWSER MODE';
@@ -351,6 +380,9 @@ class CodeBuddy {
             petStage: document.querySelector('.pet-stage'),
             appContainer: document.getElementById('app-container'),
             btnFloating: document.getElementById('btn-floating'),
+            btnFullscreen: document.getElementById('btn-fullscreen'),
+            btnMaximizeDash: document.getElementById('btn-maximize-dash'),
+            btnMinimizeDash: document.getElementById('btn-minimize-dash'),
             btnUnfloat: document.getElementById('btnUnfloat') || document.getElementById('btn-unfloat'),
             btnFwTask: document.getElementById('btn-fw-task'),
             fwXp: document.getElementById('fw-xp'),
@@ -536,6 +568,29 @@ class CodeBuddy {
             });
         }
 
+        if (this.dom.btnFullscreen) {
+            this.dom.btnFullscreen.addEventListener('click', () => {
+                audio.play('click');
+                this.toggleFullScreen();
+            });
+        }
+
+        if (this.dom.btnMaximizeDash) {
+            this.dom.btnMaximizeDash.addEventListener('click', () => {
+                audio.play('click');
+                this.toggleMaximize();
+            });
+        }
+
+        if (this.dom.btnMinimizeDash) {
+            this.dom.btnMinimizeDash.addEventListener('click', () => {
+                audio.play('click');
+                if (window.devPetDesktop && window.devPetDesktop.minimizeDashboard) {
+                    window.devPetDesktop.minimizeDashboard();
+                }
+            });
+        }
+
         if (this.dom.btnUnfloat) {
             this.dom.btnUnfloat.addEventListener('click', () => {
                 audio.play('click');
@@ -714,24 +769,46 @@ class CodeBuddy {
         });
 
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'F11') {
+                e.preventDefault();
+                this.toggleFullScreen();
+                return;
+            }
             if (e.key === 'Escape') {
+                let modalClosed = false;
                 if (this.dom.modalOverlay && !this.dom.modalOverlay.classList.contains('hidden')) {
                     this.dom.modalOverlay.classList.add('hidden');
                     audio.play('click');
+                    modalClosed = true;
                 }
                 if (this.dom.taskModalOverlay && !this.dom.taskModalOverlay.classList.contains('hidden')) {
                     this.closeTaskModal();
+                    modalClosed = true;
                 }
                 if (this.dom.cpsModalOverlay && !this.dom.cpsModalOverlay.classList.contains('hidden')) {
                     this.closeCpsModal();
+                    modalClosed = true;
                 }
                 if (this.dom.cpsDeleteModalOverlay && !this.dom.cpsDeleteModalOverlay.classList.contains('hidden')) {
                     this.closeDeleteCpsModal();
+                    modalClosed = true;
                 }
                 if (this.dom.deleteModalOverlay && !this.dom.deleteModalOverlay.classList.contains('hidden')) {
                     this.closeDeleteModal();
+                    modalClosed = true;
+                }
+
+                // If no modal was open, and we are in full-screen mode, exit full-screen
+                if (!modalClosed && this.isDashboardFullScreen) {
+                    this.exitFullScreen();
                 }
             }
+        });
+
+        // Browser fallback for full screen change
+        document.addEventListener('fullscreenchange', () => {
+            const isFs = !!document.fullscreenElement;
+            this.setFullScreenUI(isFs);
         });
 
         // Tab selection
@@ -2665,6 +2742,79 @@ class CodeBuddy {
         if (this.dom.dash.coins) this.dom.dash.coins.textContent = this.state.coins;
         if (this.dom.dash.streak) this.dom.dash.streak.textContent = this.state.longestStreak;
         if (this.dom.dash.achievements) this.dom.dash.achievements.textContent = this.state.unlockedAchievements.length;
+    }
+
+    toggleFullScreen() {
+        if (window.devPetDesktop && window.devPetDesktop.toggleDashboardFullScreen) {
+            window.devPetDesktop.toggleDashboardFullScreen().then(isFs => {
+                this.setFullScreenUI(isFs);
+            }).catch(() => {});
+        } else {
+            // Standard browser fallback
+            if (!document.fullscreenElement) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+        }
+    }
+
+    exitFullScreen() {
+        if (window.devPetDesktop && window.devPetDesktop.toggleDashboardFullScreen) {
+            if (this.isDashboardFullScreen) {
+                window.devPetDesktop.toggleDashboardFullScreen().then(isFs => {
+                    this.setFullScreenUI(isFs);
+                }).catch(() => {});
+            }
+        } else {
+            if (document.fullscreenElement && document.exitFullscreen) {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+    }
+
+    setFullScreenUI(isFs) {
+        this.isDashboardFullScreen = !!isFs;
+        if (this.isDashboardFullScreen) {
+            document.body.classList.add('fullscreen-mode');
+            if (this.dom.btnFullscreen) {
+                this.dom.btnFullscreen.textContent = '🗗 EXIT FULLSCREEN';
+                this.dom.btnFullscreen.setAttribute('title', 'Exit Full Screen (Esc or F11)');
+                this.dom.btnFullscreen.classList.add('active');
+            }
+        } else {
+            document.body.classList.remove('fullscreen-mode');
+            if (this.dom.btnFullscreen) {
+                this.dom.btnFullscreen.textContent = '⛶ FULLSCREEN';
+                this.dom.btnFullscreen.setAttribute('title', 'Toggle Full Screen (F11 / Esc)');
+                this.dom.btnFullscreen.classList.remove('active');
+            }
+        }
+    }
+
+    toggleMaximize() {
+        if (window.devPetDesktop && window.devPetDesktop.toggleDashboardMaximize) {
+            window.devPetDesktop.toggleDashboardMaximize().then(isMax => {
+                this.setMaximizeUI(isMax);
+            }).catch(() => {});
+        }
+    }
+
+    setMaximizeUI(isMax) {
+        this.isDashboardMaximized = !!isMax;
+        if (this.dom.btnMaximizeDash) {
+            if (this.isDashboardMaximized) {
+                this.dom.btnMaximizeDash.textContent = '🗗 RESTORE';
+                this.dom.btnMaximizeDash.setAttribute('title', 'Restore Window');
+            } else {
+                this.dom.btnMaximizeDash.textContent = '🗖 MAXIMIZE';
+                this.dom.btnMaximizeDash.setAttribute('title', 'Maximize Window');
+            }
+        }
     }
 }
 

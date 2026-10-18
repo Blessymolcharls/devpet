@@ -66,6 +66,41 @@ app.whenReady().then(async () => {
             return { isZoomed: isCurrentPetZoomed, width: targetW, height: targetH };
         });
 
+        // Dashboard IPC handlers
+        ipcMain.handle('toggle-dashboard-fullscreen', () => {
+            if (!dashboardWin || dashboardWin.isDestroyed()) return false;
+            const willBeFs = !dashboardWin.isFullScreen();
+            dashboardWin.setFullScreen(willBeFs);
+            return willBeFs;
+        });
+
+        ipcMain.handle('get-dashboard-fullscreen', () => {
+            if (!dashboardWin || dashboardWin.isDestroyed()) return false;
+            return dashboardWin.isFullScreen();
+        });
+
+        ipcMain.handle('toggle-dashboard-maximize', () => {
+            if (!dashboardWin || dashboardWin.isDestroyed()) return false;
+            if (dashboardWin.isMaximized()) {
+                dashboardWin.unmaximize();
+                return false;
+            } else {
+                dashboardWin.maximize();
+                return true;
+            }
+        });
+
+        ipcMain.handle('get-dashboard-maximized', () => {
+            if (!dashboardWin || dashboardWin.isDestroyed()) return false;
+            return dashboardWin.isMaximized();
+        });
+
+        ipcMain.on('minimize-dashboard', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) {
+                dashboardWin.minimize();
+            }
+        });
+
         const [cWidth, cHeight] = floatingWin.getContentSize();
         console.log(`[DevPet Verification] Initial compact content size ${cWidth}x${cHeight}`);
         assert.ok(Math.abs(cWidth - COMPACT_WIDTH) <= 4, `Width (${cWidth}) must match compact width ${COMPACT_WIDTH}`);
@@ -84,6 +119,27 @@ app.whenReady().then(async () => {
                 preload: path.join(__dirname, '..', 'preload.js'),
                 contextIsolation: true,
                 nodeIntegration: false
+            }
+        });
+
+        dashboardWin.on('enter-full-screen', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) {
+                dashboardWin.webContents.send('dashboard-fullscreen-changed', true);
+            }
+        });
+        dashboardWin.on('leave-full-screen', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) {
+                dashboardWin.webContents.send('dashboard-fullscreen-changed', false);
+            }
+        });
+        dashboardWin.on('maximize', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) {
+                dashboardWin.webContents.send('dashboard-maximized-changed', true);
+            }
+        });
+        dashboardWin.on('unmaximize', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) {
+                dashboardWin.webContents.send('dashboard-maximized-changed', false);
             }
         });
 
@@ -189,6 +245,126 @@ app.whenReady().then(async () => {
         assert.equal(floatingWin.isVisible(), false, 'Close (X) must hide companion window without quitting app');
         assert.equal(dashboardWin.isDestroyed(), false, 'Dashboard remains running when companion is hidden');
         console.log('[DevPet Verification] Close (X) button hides companion without terminating app.');
+
+        // Restore floating companion for subsequent independent behavior tests
+        floatingWin.show();
+        assert.equal(floatingWin.isVisible(), true, 'Floating companion restored');
+
+        // 8. Verify Dashboard Full-Screen Mode & Companion Non-Interference
+        console.log('[DevPet Verification] Testing Dashboard Full-Screen mode...');
+        assert.equal(dashboardWin.isFullScreen(), false, 'Dashboard should start in normal window mode');
+
+        // Toggle full-screen via button click
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('btn-fullscreen').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+
+        assert.equal(dashboardWin.isFullScreen(), true, 'Dashboard must enter full-screen mode on button click');
+        
+        // Ensure floating companion is NOT altered in size by dashboard full-screen
+        const [fWAfterDashFs, fHAfterDashFs] = floatingWin.getContentSize();
+        assert.ok(Math.abs(fWAfterDashFs - COMPACT_WIDTH) <= 4, `Companion width must remain compact (${COMPACT_WIDTH}), got ${fWAfterDashFs}`);
+        assert.ok(Math.abs(fHAfterDashFs - COMPACT_HEIGHT) <= 4, `Companion height must remain compact (${COMPACT_HEIGHT}), got ${fHAfterDashFs}`);
+
+        // Check CSS class on body and button text
+        const dashFsState = await dashboardWin.webContents.executeJavaScript(`
+            ({
+                hasFsClass: document.body.classList.contains('fullscreen-mode'),
+                btnText: document.getElementById('btn-fullscreen').textContent
+            })
+        `);
+        assert.equal(dashFsState.hasFsClass, true, 'Body must have fullscreen-mode class');
+        assert.ok(dashFsState.btnText.includes('EXIT FULLSCREEN'), 'Button text must update to EXIT FULLSCREEN');
+        console.log('[DevPet Verification] Dashboard entered full-screen without affecting companion dimensions.');
+
+        // Toggle exit full-screen via button click
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('btn-fullscreen').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isFullScreen(), false, 'Dashboard must exit full-screen mode on button click');
+        console.log('[DevPet Verification] Dashboard exited full-screen successfully.');
+
+        // 9. Verify Keyboard Shortcuts (F11 and Escape) & Modal Priority
+        console.log('[DevPet Verification] Testing F11 and Escape keyboard handling...');
+        // Toggle full-screen via F11 simulation
+        await dashboardWin.webContents.executeJavaScript(`
+            window.codeBuddyApp.toggleFullScreen();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isFullScreen(), true, 'Dashboard must enter full-screen mode via toggleFullScreen');
+
+        // Open a modal in dashboard to test Escape priority
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('task-modal-overlay').classList.remove('hidden');
+        `);
+
+        // Press Escape: should close modal, but KEEP full-screen
+        await dashboardWin.webContents.executeJavaScript(`
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        `);
+        await new Promise(r => setTimeout(r, 200));
+
+        const isModalHidden = await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('task-modal-overlay').classList.contains('hidden')
+        `);
+        assert.equal(isModalHidden, true, 'Escape must close active modal first');
+        assert.equal(dashboardWin.isFullScreen(), true, 'Dashboard must remain full-screen when Escape closed a modal');
+
+        // Press Escape again: now with no modals open, it should exit full-screen
+        await dashboardWin.webContents.executeJavaScript(`
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isFullScreen(), false, 'Escape without open modals must exit full-screen mode');
+        console.log('[DevPet Verification] Escape key modal priority and full-screen exit verified.');
+
+        // 10. Verify Dashboard Maximize / Restore & Minimize Independence
+        console.log('[DevPet Verification] Testing Dashboard Maximize and Minimize independence...');
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('btn-maximize-dash').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isMaximized(), true, 'Dashboard must maximize when btn-maximize-dash clicked');
+        assert.equal(dashboardWin.isFullScreen(), false, 'Maximize must remain separate from full-screen');
+
+        // Restore dashboard
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('btn-maximize-dash').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isMaximized(), false, 'Dashboard must unmaximize when btn-maximize-dash clicked again');
+
+        // Minimize dashboard: companion must NOT be minimized
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('btn-minimize-dash').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isMinimized(), true, 'Dashboard window must be minimized');
+        assert.equal(floatingWin.isVisible(), true, 'Dashboard minimize must NOT hide floating companion');
+        dashboardWin.restore();
+        await new Promise(r => setTimeout(r, 200));
+        console.log('[DevPet Verification] Dashboard maximize, restore, and minimize operate independently.');
+
+        // 11. Verify Companion Zoom Does NOT Alter Dashboard State
+        console.log('[DevPet Verification] Testing Companion Zoom does not alter Dashboard state...');
+        assert.equal(dashboardWin.isFullScreen(), false, 'Dashboard must be in normal mode');
+        await floatingWin.webContents.executeJavaScript(`
+            document.getElementById('btn-zoom-pet').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        const [zW] = floatingWin.getContentSize();
+        assert.ok(Math.abs(zW - ZOOMED_WIDTH) <= 4, 'Companion must be zoomed');
+        assert.equal(dashboardWin.isFullScreen(), false, 'Zooming companion must NOT alter dashboard full-screen state');
+
+        // Restore companion zoom
+        await floatingWin.webContents.executeJavaScript(`
+            document.getElementById('btn-zoom-pet').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isFullScreen(), false, 'Restoring companion zoom must NOT alter dashboard state');
+        console.log('[DevPet Verification] Companion zoom and dashboard full-screen are completely decoupled.');
 
         // Clean up
         floatingWin.close();

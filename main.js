@@ -218,6 +218,30 @@ function createOrFocusDashboardWindow() {
 
     dashboardWindow.loadFile(path.join(__dirname, 'index.html'));
 
+    dashboardWindow.on('enter-full-screen', () => {
+        if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+            dashboardWindow.webContents.send('dashboard-fullscreen-changed', true);
+        }
+    });
+
+    dashboardWindow.on('leave-full-screen', () => {
+        if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+            dashboardWindow.webContents.send('dashboard-fullscreen-changed', false);
+        }
+    });
+
+    dashboardWindow.on('maximize', () => {
+        if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+            dashboardWindow.webContents.send('dashboard-maximized-changed', true);
+        }
+    });
+
+    dashboardWindow.on('unmaximize', () => {
+        if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+            dashboardWindow.webContents.send('dashboard-maximized-changed', false);
+        }
+    });
+
     dashboardWindow.on('closed', () => {
         dashboardWindow = null;
     });
@@ -362,6 +386,40 @@ function setupIPC() {
     ipcMain.on('close-dashboard', () => {
         if (dashboardWindow && !dashboardWindow.isDestroyed()) {
             dashboardWindow.close();
+        }
+    });
+
+    ipcMain.handle('toggle-dashboard-fullscreen', () => {
+        if (!dashboardWindow || dashboardWindow.isDestroyed()) return false;
+        const willBeFs = !dashboardWindow.isFullScreen();
+        dashboardWindow.setFullScreen(willBeFs);
+        return willBeFs;
+    });
+
+    ipcMain.handle('get-dashboard-fullscreen', () => {
+        if (!dashboardWindow || dashboardWindow.isDestroyed()) return false;
+        return dashboardWindow.isFullScreen();
+    });
+
+    ipcMain.handle('toggle-dashboard-maximize', () => {
+        if (!dashboardWindow || dashboardWindow.isDestroyed()) return false;
+        if (dashboardWindow.isMaximized()) {
+            dashboardWindow.unmaximize();
+            return false;
+        } else {
+            dashboardWindow.maximize();
+            return true;
+        }
+    });
+
+    ipcMain.handle('get-dashboard-maximized', () => {
+        if (!dashboardWindow || dashboardWindow.isDestroyed()) return false;
+        return dashboardWindow.isMaximized();
+    });
+
+    ipcMain.on('minimize-dashboard', () => {
+        if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+            dashboardWindow.minimize();
         }
     });
 

@@ -70,10 +70,34 @@ test('Electron desktop companion files exist and are valid', (t) => {
     assert.ok(preloadContent.includes('toggleZoom'), 'preload must expose toggleZoom');
     assert.ok(preloadContent.includes('minimizePet'), 'preload must expose minimizePet');
     assert.ok(preloadContent.includes('closePet'), 'preload must expose closePet');
+    assert.ok(preloadContent.includes('toggleDashboardFullScreen'), 'preload must expose toggleDashboardFullScreen');
+    assert.ok(preloadContent.includes('getDashboardFullScreen'), 'preload must expose getDashboardFullScreen');
+    assert.ok(preloadContent.includes('toggleDashboardMaximize'), 'preload must expose toggleDashboardMaximize');
+    assert.ok(preloadContent.includes('getDashboardMaximized'), 'preload must expose getDashboardMaximized');
+    assert.ok(preloadContent.includes('minimizeDashboard'), 'preload must expose minimizeDashboard');
+    assert.ok(preloadContent.includes('onDashboardFullScreenChanged'), 'preload must expose onDashboardFullScreenChanged');
+    assert.ok(preloadContent.includes('onDashboardMaximizedChanged'), 'preload must expose onDashboardMaximizedChanged');
 
-    // Dashboard pet stage toggle button
+    // Dashboard main.js handlers verification
+    assert.ok(mainContent.includes('toggle-dashboard-fullscreen'), 'main.js must handle toggle-dashboard-fullscreen');
+    assert.ok(mainContent.includes('get-dashboard-fullscreen'), 'main.js must handle get-dashboard-fullscreen');
+    assert.ok(mainContent.includes('toggle-dashboard-maximize'), 'main.js must handle toggle-dashboard-maximize');
+    assert.ok(mainContent.includes('get-dashboard-maximized'), 'main.js must handle get-dashboard-maximized');
+    assert.ok(mainContent.includes('minimize-dashboard'), 'main.js must handle minimize-dashboard');
+
+    // Dashboard navigation & controls verification
     const indexHtml = path.join(__dirname, '..', 'index.html');
     const indexHtmlContent = fs.readFileSync(indexHtml, 'utf-8');
     assert.ok(indexHtmlContent.includes('id="btn-toggle-dash-pet"'), 'index.html must have btn-toggle-dash-pet');
+    assert.ok(indexHtmlContent.includes('id="btn-fullscreen"'), 'index.html must have btn-fullscreen');
+    assert.ok(indexHtmlContent.includes('id="btn-maximize-dash"'), 'index.html must have btn-maximize-dash');
+    assert.ok(indexHtmlContent.includes('id="btn-minimize-dash"'), 'index.html must have btn-minimize-dash');
+
+    // Script.js handlers verification
+    const scriptJs = path.join(__dirname, '..', 'script.js');
+    const scriptJsContent = fs.readFileSync(scriptJs, 'utf-8');
+    assert.ok(scriptJsContent.includes('toggleFullScreen'), 'script.js must implement toggleFullScreen');
+    assert.ok(scriptJsContent.includes('exitFullScreen'), 'script.js must implement exitFullScreen');
+    assert.ok(scriptJsContent.includes('toggleMaximize'), 'script.js must implement toggleMaximize');
 });
 
