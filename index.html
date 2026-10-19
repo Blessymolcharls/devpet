@@ -35,13 +35,16 @@
             <button id="btn-toggle-dash-pet" class="toggle-btn" aria-label="Toggle Dashboard Pet Stage" title="Toggle large pet stage in dashboard">PET STAGE: ON</button>
             <button id="btn-floating" class="toggle-btn" aria-label="Toggle Floating Pet Overlay">FLOAT PET</button>
             <button id="btn-fullscreen" class="toggle-btn" aria-label="Toggle Dashboard Full Screen" title="Toggle Full Screen (F11 / Esc)">⛶ FULLSCREEN</button>
-            <button id="btn-maximize-dash" class="toggle-btn" aria-label="Maximize / Restore Dashboard Window" title="Maximize / Restore Window">🗖 MAXIMIZE</button>
-            <button id="btn-minimize-dash" class="toggle-btn" aria-label="Minimize Dashboard Window" title="Minimize Window">🗕 MINIMIZE</button>
             <button id="btn-export" class="toggle-btn" aria-label="Export Save Data">EXPORT</button>
             <label class="toggle-btn" for="btn-import" tabindex="0" role="button" aria-label="Import Save Data">
                 IMPORT <input type="file" id="btn-import" accept=".json" class="sr-only">
             </label>
             <button id="btn-reset" class="toggle-btn text-error" aria-label="Reset All Progress">RESET</button>
+            <div class="window-controls" id="dashboard-window-controls" aria-label="Window Controls">
+                <button id="btn-minimize-dash" class="toggle-btn window-ctrl-btn" aria-label="Minimize" title="Minimize">—</button>
+                <button id="btn-maximize-dash" class="toggle-btn window-ctrl-btn" aria-label="Maximize" title="Maximize">□</button>
+                <button id="btn-close-dash" class="toggle-btn window-ctrl-btn text-error" aria-label="Close" title="Close">✕</button>
+            </div>
         </div>
     </nav>
 
@@ -652,12 +655,16 @@
 
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- In-browser Floating Widget Fallback (preserved for browser development mode) -->
-    <div class="floating-widget panel hidden-by-default" id="floating-widget" aria-label="Floating Pet Widget">
+    <!-- In-browser Floating Widget Fallback (Used when opened in Chrome instead of Electron) -->
+    <div class="floating-widget panel hidden-by-default" id="floating-widget" aria-label="Floating Pet Widget Preview">
         <div class="fw-header">
             <span>CodeBuddy</span>
-            <button id="btn-unfloat" class="toggle-btn text-primary" aria-label="Expand back to full window">EXPAND</button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button id="btn-unfloat" class="toggle-btn text-primary" aria-label="Dock back to dashboard" title="Dock back to full dashboard">DOCK</button>
+                <button id="btn-fw-close" class="toggle-btn text-error" aria-label="Close preview" title="Close preview" style="padding: 2px 8px;">✕</button>
+            </div>
         </div>
+        <div class="fw-preview-tag">IN-PAGE BROWSER PREVIEW</div>
         <div class="fw-pet" id="fw-pet-container" role="img" aria-label="Floating pet mini view">
             <svg class="pet-svg" viewBox="0 0 24 24" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
                 <rect class="pet-body" x="6" y="8" width="12" height="10" fill="var(--color-primary)" />
@@ -672,7 +679,8 @@
         <div style="font-size: 0.85rem; text-align: center; font-family: var(--font-pixel);">
             LVL <span id="fw-level" class="text-accent">1</span> | XP: <span id="fw-xp" class="text-primary">0</span>/100
         </div>
-        <button id="btn-fw-task" class="toggle-btn text-primary" style="margin-top: 4px; width: 100%;">+ TASK</button>
+        <button id="btn-fw-task" class="toggle-btn text-primary" style="margin-top: 4px; width: 100%;">+ QUICK TASK</button>
+        <div class="fw-notice">True always-on-top desktop overlay requires running <code>npm start</code></div>
     </div>
 
     <script src="script.js?v=3"></script>

@@ -110,14 +110,17 @@ Launch the native desktop floating pet overlay and dashboard:
 npm start
 ```
 
-### 4. Running in Web Browser Mode (Alternative)
-To run as a purely browser-based application without Electron:
+### 4. Running in Web Browser Mode (Preview Only)
+To run as a browser preview without the native desktop overlay:
 ```bash
 npx serve .
 # or
 python -m http.server 8080
 ```
 Open `http://localhost:8080` or double-click `index.html`.
+
+> [!NOTE]
+> True desktop always-on-top companion overlay (floating over VS Code, Chrome, etc.) and native Windows title-bar controls (Minimize to taskbar, Maximize to desktop work area, Restore Down, Close) require running DevPet via Electron (`npm start`). Web browsers cannot provide native always-on-top window layering or taskbar minimization due to browser security sandbox constraints.
 
 ---
 
@@ -141,14 +144,30 @@ The test suite validates:
 
 ---
 
-## 🎮 Desktop Companion Controls
+## 🎮 Two-State Mutually Exclusive Interface Architecture
+
+DevPet operates in two clean, mutually exclusive modes without overlapping windows:
+
+1. **Mode A — Full Dashboard:**
+   - Starts automatically on `npm start`.
+   - Comprehensive productivity suite: Level, XP, happiness, coins, streak, Pomodoro focus timer, task manager, shop, inventory, and CPS leaderboard.
+   - Includes standard Windows window controls: Minimize (`—`), Maximize (`□`) / Restore Down (`❐`), and Close (`✕`).
+   - Click **`FLOAT PET`** in the top navigation to switch cleanly into Mode B (the dashboard hides and the floating companion appears).
+
+2. **Mode B — Floating Companion:**
+   - Single, compact, transparent, frameless, always-on-top desktop widget (`screen-saver` level).
+   - Click-through transparency on non-interactive regions, responsive micro-animations, quick tasks, and Pomodoro timer.
+   - Standard controls: Zoom/Restore (`🔍`), Minimize (`➖`), and Dismiss (`✕`).
+   - Click **`⤢` (Return to Dashboard)** or the pet name to switch cleanly back to Mode A (the companion hides and the dashboard is restored).
 
 | Action | Control / Shortcut |
 |---|---|
+| **Float Pet (Enter Mode B)** | Click `[ FLOAT PET ]` in the Dashboard top navigation |
+| **Return to Dashboard (Mode A)** | Click `[ ⤢ ]` or click pet name on the Floating Companion |
 | **Drag Pet** | Click and drag the top title bar of the floating pet |
-| **Open Dashboard** | Click `[ 📊 ]` on the floating companion or tray icon |
-| **Minimize Pet** | Click `[ ➖ ]` to hide companion to the system tray |
-| **Exit DevPet** | Click `[ ✕ ]` or select `Quit DevPet` from the system tray |
+| **Zoom Companion** | Click `[ 🔍 ]` to toggle compact (230x250) vs zoomed (320x350) |
+| **Minimize Companion** | Click `[ ➖ ]` to minimize companion to the system tray |
+| **Dismiss Companion** | Click `[ ✕ ]` to return safely to Full Dashboard |
 | **Quick Task** | Click `[ + TASK ]` on the companion to log progress |
 | **Toggle Focus Timer**| Click `[ 🍅 25:00 ]` on the companion |
 | **Pet Companion** | Click `[ ❤️ ]` or click directly on the pet |

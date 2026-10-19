@@ -68,6 +68,29 @@ html, body {
     cursor: grabbing;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-app-region: no-drag;
+}
+
+.return-dash-btn {
+    font-size: 0.85rem;
+    padding: 2px 6px;
+    color: var(--color-primary);
+    border-color: rgba(0, 240, 255, 0.4);
+    background: rgba(0, 240, 255, 0.12);
+    font-weight: 700;
+}
+
+.return-dash-btn:hover {
+    background: rgba(0, 240, 255, 0.35);
+    border-color: var(--color-primary);
+    color: #fff;
+    transform: scale(1.08);
+}
+
 .pet-name {
     font-family: var(--font-pixel);
     font-size: 1.15rem;

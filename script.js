@@ -169,7 +169,8 @@ class CodeBuddy {
     initDesktopIntegration() {
         if (window.devPetDesktop) {
             if (this.dom.envModeBadge) {
-                this.dom.envModeBadge.textContent = 'DESKTOP COMPANION ACTIVE';
+                this.dom.envModeBadge.textContent = 'DESKTOP READY';
+                this.dom.envModeBadge.title = 'DevPet Electron Desktop Active';
                 this.dom.envModeBadge.style.borderColor = 'var(--color-accent)';
                 this.dom.envModeBadge.style.color = 'var(--color-accent)';
             }
@@ -230,7 +231,10 @@ class CodeBuddy {
             }
         } else {
             if (this.dom.envModeBadge) {
-                this.dom.envModeBadge.textContent = 'WEB BROWSER MODE';
+                this.dom.envModeBadge.textContent = 'BROWSER PREVIEW';
+                this.dom.envModeBadge.title = 'Running in browser. True desktop always-on-top overlay and native window controls require running via Electron (npm start).';
+                this.dom.envModeBadge.style.borderColor = 'var(--color-warning)';
+                this.dom.envModeBadge.style.color = 'var(--color-warning)';
             }
         }
     }
@@ -383,7 +387,9 @@ class CodeBuddy {
             btnFullscreen: document.getElementById('btn-fullscreen'),
             btnMaximizeDash: document.getElementById('btn-maximize-dash'),
             btnMinimizeDash: document.getElementById('btn-minimize-dash'),
+            btnCloseDash: document.getElementById('btn-close-dash'),
             btnUnfloat: document.getElementById('btnUnfloat') || document.getElementById('btn-unfloat'),
+            btnFwClose: document.getElementById('btn-fw-close'),
             btnFwTask: document.getElementById('btn-fw-task'),
             fwXp: document.getElementById('fw-xp'),
             fwLevel: document.getElementById('fw-level'),
@@ -560,10 +566,22 @@ class CodeBuddy {
             this.dom.btnFloating.addEventListener('click', () => {
                 audio.play('click');
                 if (window.devPetDesktop) {
-                    window.devPetDesktop.showPet();
-                    this.showToast('success', 'Desktop Pet companion summoned to top! 🐾');
-                } else if (this.dom.floatingWidget) {
-                    this.dom.floatingWidget.classList.toggle('hidden-by-default');
+                    this.saveState();
+                    if (window.devPetDesktop.enterFloatingMode) {
+                        window.devPetDesktop.enterFloatingMode();
+                    } else if (window.devPetDesktop.showPet) {
+                        window.devPetDesktop.showPet();
+                    }
+                    this.showToast('success', 'Switched to Floating Companion Mode! 🐾');
+                } else {
+                    document.body.classList.toggle('floating-active');
+                    const isActive = document.body.classList.contains('floating-active');
+                    if (this.dom.floatingWidget) {
+                        this.dom.floatingWidget.classList.toggle('hidden-by-default', !isActive);
+                    }
+                    if (isActive) {
+                        this.showToast('info', 'Browser preview active. Run "npm start" for true desktop always-on-top overlay! 🐾');
+                    }
                 }
             });
         }
@@ -578,7 +596,11 @@ class CodeBuddy {
         if (this.dom.btnMaximizeDash) {
             this.dom.btnMaximizeDash.addEventListener('click', () => {
                 audio.play('click');
-                this.toggleMaximize();
+                if (window.devPetDesktop && window.devPetDesktop.toggleDashboardMaximize) {
+                    this.toggleMaximize();
+                } else {
+                    this.showToast('info', 'Window maximize to work area requires the Electron desktop app (npm start).');
+                }
             });
         }
 
@@ -587,13 +609,45 @@ class CodeBuddy {
                 audio.play('click');
                 if (window.devPetDesktop && window.devPetDesktop.minimizeDashboard) {
                     window.devPetDesktop.minimizeDashboard();
+                } else {
+                    this.showToast('info', 'Taskbar minimize requires the Electron desktop app (npm start).');
                 }
+            });
+        }
+
+        if (this.dom.btnCloseDash) {
+            this.dom.btnCloseDash.addEventListener('click', () => {
+                audio.play('click');
+                if (window.devPetDesktop && window.devPetDesktop.closeDashboard) {
+                    window.devPetDesktop.closeDashboard();
+                } else {
+                    this.showToast('info', 'Window close requires the Electron desktop app (npm start).');
+                }
+            });
+        }
+
+        const topNav = document.querySelector('.top-nav');
+        if (topNav) {
+            topNav.addEventListener('dblclick', (e) => {
+                if (e.target.closest('button, select, input, label, a, .no-drag')) return;
+                this.toggleMaximize();
             });
         }
 
         if (this.dom.btnUnfloat) {
             this.dom.btnUnfloat.addEventListener('click', () => {
                 audio.play('click');
+                document.body.classList.remove('floating-active');
+                if (this.dom.floatingWidget) {
+                    this.dom.floatingWidget.classList.add('hidden-by-default');
+                }
+            });
+        }
+
+        if (this.dom.btnFwClose) {
+            this.dom.btnFwClose.addEventListener('click', () => {
+                audio.play('click');
+                document.body.classList.remove('floating-active');
                 if (this.dom.floatingWidget) {
                     this.dom.floatingWidget.classList.add('hidden-by-default');
                 }
@@ -882,26 +936,6 @@ class CodeBuddy {
             });
         }
 
-        // Float Mode Button
-        if (this.dom.btnFloating) {
-            this.dom.btnFloating.addEventListener('click', () => {
-                audio.play('click');
-                if (window.devPetDesktop) {
-                    window.devPetDesktop.showPet();
-                    this.showToast('info', 'Desktop Pet brought to front! 🐾');
-                } else {
-                    document.body.classList.add('floating-active');
-                    this.showToast('info', 'Browser mini widget active');
-                }
-            });
-        }
-
-        if (this.dom.btnUnfloat) {
-            this.dom.btnUnfloat.addEventListener('click', () => {
-                document.body.classList.remove('floating-active');
-                audio.play('click');
-            });
-        }
 
         if (this.dom.btnCloseModal) {
             this.dom.btnCloseModal.addEventListener('click', () => {
@@ -2808,11 +2842,13 @@ class CodeBuddy {
         this.isDashboardMaximized = !!isMax;
         if (this.dom.btnMaximizeDash) {
             if (this.isDashboardMaximized) {
-                this.dom.btnMaximizeDash.textContent = '🗗 RESTORE';
-                this.dom.btnMaximizeDash.setAttribute('title', 'Restore Window');
+                this.dom.btnMaximizeDash.textContent = '❐';
+                this.dom.btnMaximizeDash.setAttribute('title', 'Restore Down');
+                this.dom.btnMaximizeDash.setAttribute('aria-label', 'Restore Down');
             } else {
-                this.dom.btnMaximizeDash.textContent = '🗖 MAXIMIZE';
-                this.dom.btnMaximizeDash.setAttribute('title', 'Maximize Window');
+                this.dom.btnMaximizeDash.textContent = '□';
+                this.dom.btnMaximizeDash.setAttribute('title', 'Maximize');
+                this.dom.btnMaximizeDash.setAttribute('aria-label', 'Maximize');
             }
         }
     }

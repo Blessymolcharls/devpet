@@ -48,11 +48,33 @@ app.whenReady().then(async () => {
         ipcMain.handle('get-initial-state', () => stateStore);
         ipcMain.handle('save-state', (event, s) => { stateStore = s; return { success: true }; });
         ipcMain.on('set-ignore-mouse-events', () => {});
-        ipcMain.on('open-dashboard', () => {});
+        ipcMain.on('open-dashboard', () => {
+            if (floatingWin && !floatingWin.isDestroyed()) floatingWin.hide();
+            if (dashboardWin && !dashboardWin.isDestroyed()) { dashboardWin.show(); dashboardWin.focus(); }
+        });
+        ipcMain.handle('enter-floating-mode', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) dashboardWin.hide();
+            if (floatingWin && !floatingWin.isDestroyed()) { floatingWin.show(); floatingWin.focus(); }
+            return { mode: 'floating' };
+        });
+        ipcMain.handle('return-to-dashboard', () => {
+            if (floatingWin && !floatingWin.isDestroyed()) floatingWin.hide();
+            if (dashboardWin && !dashboardWin.isDestroyed()) { dashboardWin.show(); dashboardWin.focus(); }
+            return { mode: 'dashboard' };
+        });
+        ipcMain.handle('get-app-mode', () => {
+            return (floatingWin && floatingWin.isVisible()) ? 'floating' : 'dashboard';
+        });
         ipcMain.on('minimize-pet', () => floatingWin.hide());
-        ipcMain.on('close-pet', () => floatingWin.hide());
+        ipcMain.on('close-pet', () => {
+            if (floatingWin && !floatingWin.isDestroyed()) floatingWin.hide();
+            if (dashboardWin && !dashboardWin.isDestroyed()) { dashboardWin.show(); dashboardWin.focus(); }
+        });
         ipcMain.on('hide-pet', () => floatingWin.hide());
-        ipcMain.on('show-pet', () => floatingWin.show());
+        ipcMain.on('show-pet', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) dashboardWin.hide();
+            if (floatingWin && !floatingWin.isDestroyed()) { floatingWin.show(); floatingWin.focus(); }
+        });
         ipcMain.handle('get-pet-zoom', () => ({ isZoomed: isCurrentPetZoomed }));
 
         ipcMain.handle('toggle-pet-zoom', () => {
@@ -101,6 +123,12 @@ app.whenReady().then(async () => {
             }
         });
 
+        ipcMain.on('close-dashboard', () => {
+            if (dashboardWin && !dashboardWin.isDestroyed()) {
+                dashboardWin.close();
+            }
+        });
+
         const [cWidth, cHeight] = floatingWin.getContentSize();
         console.log(`[DevPet Verification] Initial compact content size ${cWidth}x${cHeight}`);
         assert.ok(Math.abs(cWidth - COMPACT_WIDTH) <= 4, `Width (${cWidth}) must match compact width ${COMPACT_WIDTH}`);
@@ -115,6 +143,12 @@ app.whenReady().then(async () => {
         const dashboardWin = new BrowserWindow({
             width: 1200,
             height: 820,
+            minWidth: 800,
+            minHeight: 600,
+            resizable: true,
+            minimizable: true,
+            maximizable: true,
+            closable: true,
             webPreferences: {
                 preload: path.join(__dirname, '..', 'preload.js'),
                 contextIsolation: true,
@@ -320,32 +354,100 @@ app.whenReady().then(async () => {
         assert.equal(dashboardWin.isFullScreen(), false, 'Escape without open modals must exit full-screen mode');
         console.log('[DevPet Verification] Escape key modal priority and full-screen exit verified.');
 
-        // 10. Verify Dashboard Maximize / Restore & Minimize Independence
-        console.log('[DevPet Verification] Testing Dashboard Maximize and Minimize independence...');
+        // 10. Verify Standard Windows Controls (Minimize, Maximize / Restore Down, and Independence)
+        console.log('[DevPet Verification] Testing Standard Windows Controls (—, □, ❐, ✕)...');
+        
+        // Check initial button icons and titles
+        const initialCtrlState = await dashboardWin.webContents.executeJavaScript(`
+            ({
+                minText: document.getElementById('btn-minimize-dash').textContent.trim(),
+                minTitle: document.getElementById('btn-minimize-dash').getAttribute('title'),
+                maxText: document.getElementById('btn-maximize-dash').textContent.trim(),
+                maxTitle: document.getElementById('btn-maximize-dash').getAttribute('title'),
+                closeText: document.getElementById('btn-close-dash').textContent.trim(),
+                closeTitle: document.getElementById('btn-close-dash').getAttribute('title')
+            })
+        `);
+        assert.equal(initialCtrlState.minText, '—', 'Minimize button must initially display —');
+        assert.equal(initialCtrlState.minTitle, 'Minimize', 'Minimize button title must be Minimize');
+        assert.equal(initialCtrlState.maxText, '□', 'Maximize button must initially display □');
+        assert.equal(initialCtrlState.maxTitle, 'Maximize', 'Maximize button title must be Maximize');
+        assert.equal(initialCtrlState.closeText, '✕', 'Close button must display ✕');
+        assert.equal(initialCtrlState.closeTitle, 'Close', 'Close button title must be Close');
+
+        // Record initial windowed size and position
+        const initialBounds = dashboardWin.getBounds();
+        assert.ok(initialBounds.width >= 800, 'Windowed width should be at least minWidth 800');
+        assert.ok(initialBounds.height >= 600, 'Windowed height should be at least minHeight 600');
+
+        // 10a. Maximize via btn-maximize-dash
         await dashboardWin.webContents.executeJavaScript(`
             document.getElementById('btn-maximize-dash').click();
         `);
         await new Promise(r => setTimeout(r, 500));
-        assert.equal(dashboardWin.isMaximized(), true, 'Dashboard must maximize when btn-maximize-dash clicked');
-        assert.equal(dashboardWin.isFullScreen(), false, 'Maximize must remain separate from full-screen');
+        assert.equal(dashboardWin.isMaximized(), true, 'Dashboard must be maximized when btn-maximize-dash clicked');
+        assert.equal(dashboardWin.isFullScreen(), false, 'Maximize must fill desktop work area and NOT use full-screen');
 
-        // Restore dashboard
+        // Verify button toggles to Restore Down (❐)
+        const maximizedBtnState = await dashboardWin.webContents.executeJavaScript(`
+            ({
+                maxText: document.getElementById('btn-maximize-dash').textContent.trim(),
+                maxTitle: document.getElementById('btn-maximize-dash').getAttribute('title')
+            })
+        `);
+        assert.equal(maximizedBtnState.maxText, '❐', 'Maximize button must toggle to Restore Down (❐) when window is maximized');
+        assert.equal(maximizedBtnState.maxTitle, 'Restore Down', 'Button title must update to Restore Down');
+        console.log('[DevPet Verification] Maximize (□) successfully expanded dashboard and toggled to Restore Down (❐).');
+
+        // 10b. Restore Down via btn-maximize-dash
         await dashboardWin.webContents.executeJavaScript(`
             document.getElementById('btn-maximize-dash').click();
         `);
         await new Promise(r => setTimeout(r, 500));
-        assert.equal(dashboardWin.isMaximized(), false, 'Dashboard must unmaximize when btn-maximize-dash clicked again');
+        assert.equal(dashboardWin.isMaximized(), false, 'Dashboard must unmaximize when clicked in maximized state');
 
-        // Minimize dashboard: companion must NOT be minimized
+        // Verify button toggles back to Maximize (□)
+        const restoredBtnState = await dashboardWin.webContents.executeJavaScript(`
+            ({
+                maxText: document.getElementById('btn-maximize-dash').textContent.trim(),
+                maxTitle: document.getElementById('btn-maximize-dash').getAttribute('title')
+            })
+        `);
+        assert.equal(restoredBtnState.maxText, '□', 'Button must toggle back to Maximize (□) when window is restored');
+        assert.equal(restoredBtnState.maxTitle, 'Maximize', 'Button title must update back to Maximize');
+
+        // Verify preservation of original dimensions and position
+        const restoredBounds = dashboardWin.getBounds();
+        assert.equal(restoredBounds.width, initialBounds.width, 'Restored width must equal pre-maximized width');
+        assert.equal(restoredBounds.height, initialBounds.height, 'Restored height must equal pre-maximized height');
+        assert.equal(restoredBounds.x, initialBounds.x, 'Restored X position must equal pre-maximized X');
+        assert.equal(restoredBounds.y, initialBounds.y, 'Restored Y position must equal pre-maximized Y');
+        console.log('[DevPet Verification] Restore Down (❐) preserved original window dimensions and position.');
+
+        // 10c. Double-click title bar to maximize and restore
+        await dashboardWin.webContents.executeJavaScript(`
+            document.querySelector('.top-nav').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isMaximized(), true, 'Double-clicking top-nav title bar must maximize dashboard');
+        await dashboardWin.webContents.executeJavaScript(`
+            document.querySelector('.top-nav').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isMaximized(), false, 'Double-clicking top-nav title bar again must restore dashboard');
+        console.log('[DevPet Verification] Double-click to maximize/restore on title-bar verified.');
+
+        // 10d. Minimize dashboard to taskbar & companion independence
         await dashboardWin.webContents.executeJavaScript(`
             document.getElementById('btn-minimize-dash').click();
         `);
         await new Promise(r => setTimeout(r, 500));
-        assert.equal(dashboardWin.isMinimized(), true, 'Dashboard window must be minimized');
+        assert.equal(dashboardWin.isMinimized(), true, 'Dashboard window must be minimized to taskbar');
         assert.equal(floatingWin.isVisible(), true, 'Dashboard minimize must NOT hide floating companion');
         dashboardWin.restore();
         await new Promise(r => setTimeout(r, 200));
-        console.log('[DevPet Verification] Dashboard maximize, restore, and minimize operate independently.');
+        assert.equal(dashboardWin.isMinimized(), false, 'Dashboard window restored from taskbar');
+        console.log('[DevPet Verification] Dashboard Minimize (—), Maximize (□), and Restore Down (❐) operate independently.');
 
         // 11. Verify Companion Zoom Does NOT Alter Dashboard State
         console.log('[DevPet Verification] Testing Companion Zoom does not alter Dashboard state...');
@@ -365,6 +467,50 @@ app.whenReady().then(async () => {
         await new Promise(r => setTimeout(r, 500));
         assert.equal(dashboardWin.isFullScreen(), false, 'Restoring companion zoom must NOT alter dashboard state');
         console.log('[DevPet Verification] Companion zoom and dashboard full-screen are completely decoupled.');
+
+        // 12. Verify Mutually Exclusive Two-State Interface Architecture
+        console.log('[DevPet Verification] Testing Two-State Mode Switching (Dashboard Mode A vs Floating Companion Mode B)...');
+        
+        // Mode A: Dashboard visible, Floating Pet hidden
+        floatingWin.hide();
+        dashboardWin.show();
+        await new Promise(r => setTimeout(r, 200));
+        assert.equal(dashboardWin.isVisible(), true, 'Mode A: Dashboard must be visible');
+        assert.equal(floatingWin.isVisible(), false, 'Mode A: Floating companion must be hidden');
+        
+        // Switch to Mode B via btn-floating on Dashboard
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('btn-floating').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isVisible(), false, 'Mode B: Dashboard must be hidden when entering floating mode');
+        assert.equal(floatingWin.isVisible(), true, 'Mode B: Floating companion must be visible');
+        console.log('[DevPet Verification] Switched to Mode B: Dashboard hidden, Floating Companion visible.');
+
+        // Switch back to Mode A via btn-open-dash on Floating Companion
+        await floatingWin.webContents.executeJavaScript(`
+            document.getElementById('btn-open-dash').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isVisible(), true, 'Mode A restored: Dashboard must be visible');
+        assert.equal(floatingWin.isVisible(), false, 'Mode A restored: Floating companion must be hidden');
+        console.log('[DevPet Verification] Switched back to Mode A via btn-open-dash: Companion hidden, Dashboard visible.');
+
+        // Switch to Mode B again and test returning via close-pet (✕)
+        await dashboardWin.webContents.executeJavaScript(`
+            document.getElementById('btn-floating').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isVisible(), false);
+        assert.equal(floatingWin.isVisible(), true);
+
+        await floatingWin.webContents.executeJavaScript(`
+            document.getElementById('btn-close-pet').click();
+        `);
+        await new Promise(r => setTimeout(r, 500));
+        assert.equal(dashboardWin.isVisible(), true, 'Dismissing companion must restore Dashboard (user never stranded)');
+        assert.equal(floatingWin.isVisible(), false, 'Companion must be hidden');
+        console.log('[DevPet Verification] Dismissing companion via ✕ safely restored Dashboard Mode A.');
 
         // Clean up
         floatingWin.close();

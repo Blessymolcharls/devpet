@@ -13,7 +13,10 @@
     <div id="floating-pet-root" class="floating-widget-card interactive">
         <!-- Compact Custom Header & Window Controls -->
         <header class="widget-header" id="drag-bar" title="Drag to move CodeBuddy on desktop">
-            <span class="pet-name" id="pet-header-name" title="Click to open Dashboard / Drag to move">CodeBuddy</span>
+            <div class="header-left no-drag">
+                <button id="btn-open-dash" class="icon-btn return-dash-btn" title="Return to Dashboard" aria-label="Return to Dashboard">⤢</button>
+                <span class="pet-name" id="pet-header-name" title="Click to return to Dashboard / Drag to move">CodeBuddy</span>
+            </div>
             <div class="top-controls no-drag">
                 <button id="btn-zoom-pet" class="icon-btn" title="Zoom/Restore" aria-label="Zoom/Restore">🔍</button>
                 <button id="btn-minimize-pet" class="icon-btn" title="Minimize" aria-label="Minimize">➖</button>

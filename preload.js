@@ -46,6 +46,48 @@ contextBridge.exposeInMainWorld('devPetDesktop', {
         ipcRenderer.send('set-ignore-mouse-events', Boolean(ignore), options);
     },
 
+    enterFloatingMode: async () => {
+        try {
+            return await ipcRenderer.invoke('enter-floating-mode');
+        } catch (err) {
+            console.error('[Preload] enterFloatingMode error:', err);
+            return { mode: 'dashboard' };
+        }
+    },
+
+    returnToDashboard: async () => {
+        try {
+            return await ipcRenderer.invoke('return-to-dashboard');
+        } catch (err) {
+            console.error('[Preload] returnToDashboard error:', err);
+            return { mode: 'floating' };
+        }
+    },
+
+    getAppMode: async () => {
+        try {
+            return await ipcRenderer.invoke('get-app-mode');
+        } catch (err) {
+            console.error('[Preload] getAppMode error:', err);
+            return 'dashboard';
+        }
+    },
+
+    onAppModeChanged: (callback) => {
+        if (typeof callback !== 'function') return () => {};
+        const listener = (event, mode) => {
+            try {
+                callback(mode);
+            } catch (err) {
+                console.error('[Preload] onAppModeChanged error:', err);
+            }
+        };
+        ipcRenderer.on('app-mode-changed', listener);
+        return () => {
+            ipcRenderer.removeListener('app-mode-changed', listener);
+        };
+    },
+
     openDashboard: () => {
         ipcRenderer.send('open-dashboard');
     },
@@ -92,6 +134,10 @@ contextBridge.exposeInMainWorld('devPetDesktop', {
 
     minimizeDashboard: () => {
         ipcRenderer.send('minimize-dashboard');
+    },
+
+    closeDashboard: () => {
+        ipcRenderer.send('close-dashboard');
     },
 
     onDashboardFullScreenChanged: (callback) => {

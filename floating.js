@@ -396,15 +396,27 @@ async function initFloatingCompanion() {
 
     if (dom.petHeaderName) {
         dom.petHeaderName.addEventListener('click', () => {
-            if (window.devPetDesktop && window.devPetDesktop.openDashboard) {
-                window.devPetDesktop.openDashboard();
+            saveAndBroadcastState();
+            if (window.devPetDesktop) {
+                if (window.devPetDesktop.returnToDashboard) {
+                    window.devPetDesktop.returnToDashboard();
+                } else if (window.devPetDesktop.openDashboard) {
+                    window.devPetDesktop.openDashboard();
+                }
             }
         });
     }
 
     if (dom.btnOpenDash) {
         dom.btnOpenDash.addEventListener('click', () => {
-            if (window.devPetDesktop) window.devPetDesktop.openDashboard();
+            saveAndBroadcastState();
+            if (window.devPetDesktop) {
+                if (window.devPetDesktop.returnToDashboard) {
+                    window.devPetDesktop.returnToDashboard();
+                } else if (window.devPetDesktop.openDashboard) {
+                    window.devPetDesktop.openDashboard();
+                }
+            }
         });
     }
 

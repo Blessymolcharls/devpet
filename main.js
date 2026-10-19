@@ -191,14 +191,49 @@ function createFloatingWindow() {
     });
 }
 
+// --- Two-State Window Mode Manager (Mutually Exclusive) ---
+let currentAppMode = 'dashboard'; // 'dashboard' (Mode A) or 'floating' (Mode B)
+
+function switchToDashboardMode() {
+    currentAppMode = 'dashboard';
+    if (floatingWindow && !floatingWindow.isDestroyed()) {
+        floatingWindow.hide();
+    }
+    createOrFocusDashboardWindow();
+    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+        dashboardWindow.webContents.send('app-mode-changed', 'dashboard');
+    }
+    return { mode: 'dashboard' };
+}
+
+function switchToFloatingMode() {
+    currentAppMode = 'floating';
+    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+        dashboardWindow.hide();
+    }
+    createOrFocusFloatingWindow();
+    if (floatingWindow && !floatingWindow.isDestroyed()) {
+        floatingWindow.webContents.send('app-mode-changed', 'floating');
+    }
+    return { mode: 'floating' };
+}
+
+function createOrFocusFloatingWindow() {
+    if (!floatingWindow || floatingWindow.isDestroyed()) {
+        createFloatingWindow();
+    } else {
+        if (floatingWindow.isMinimized()) floatingWindow.restore();
+        floatingWindow.show();
+        floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+        floatingWindow.focus();
+    }
+}
+
 function createOrFocusDashboardWindow() {
     if (dashboardWindow && !dashboardWindow.isDestroyed()) {
         if (dashboardWindow.isMinimized()) dashboardWindow.restore();
         dashboardWindow.show();
         dashboardWindow.focus();
-        if (floatingWindow && !floatingWindow.isDestroyed()) {
-            floatingWindow.setAlwaysOnTop(true, 'screen-saver');
-        }
         return;
     }
 
@@ -209,6 +244,10 @@ function createOrFocusDashboardWindow() {
         minHeight: 600,
         title: 'DevPet (CodeBuddy) Dashboard',
         autoHideMenuBar: true,
+        resizable: true,
+        minimizable: true,
+        maximizable: true,
+        closable: true,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -245,10 +284,6 @@ function createOrFocusDashboardWindow() {
     dashboardWindow.on('closed', () => {
         dashboardWindow = null;
     });
-
-    if (floatingWindow && !floatingWindow.isDestroyed()) {
-        floatingWindow.setAlwaysOnTop(true, 'screen-saver');
-    }
 }
 
 // --- System Tray ---
@@ -269,16 +304,7 @@ function setupTray() {
             { type: 'separator' },
             {
                 label: 'Show Floating Pet',
-                click: () => {
-                    if (!floatingWindow || floatingWindow.isDestroyed()) {
-                        createFloatingWindow();
-                    } else {
-                        if (floatingWindow.isMinimized()) floatingWindow.restore();
-                        floatingWindow.show();
-                        floatingWindow.setAlwaysOnTop(true, 'screen-saver');
-                        floatingWindow.focus();
-                    }
-                }
+                click: () => switchToFloatingMode()
             },
             {
                 label: 'Hide Floating Pet',
@@ -316,7 +342,7 @@ function setupTray() {
             },
             {
                 label: 'Open Dashboard',
-                click: () => createOrFocusDashboardWindow()
+                click: () => switchToDashboardMode()
             },
             {
                 label: 'Reset Pet Position',
@@ -343,13 +369,10 @@ function setupTray() {
         tray.setToolTip('DevPet (CodeBuddy) Desktop Companion');
         tray.setContextMenu(contextMenu);
         tray.on('double-click', () => {
-            if (!floatingWindow || floatingWindow.isDestroyed()) {
-                createFloatingWindow();
+            if (currentAppMode === 'floating') {
+                switchToDashboardMode();
             } else {
-                if (floatingWindow.isMinimized()) floatingWindow.restore();
-                floatingWindow.show();
-                floatingWindow.setAlwaysOnTop(true, 'screen-saver');
-                floatingWindow.focus();
+                switchToFloatingMode();
             }
         });
     } catch (err) {
@@ -379,14 +402,20 @@ function setupIPC() {
         }
     });
 
-    ipcMain.on('open-dashboard', () => {
-        createOrFocusDashboardWindow();
+    ipcMain.handle('enter-floating-mode', () => {
+        return switchToFloatingMode();
     });
 
-    ipcMain.on('close-dashboard', () => {
-        if (dashboardWindow && !dashboardWindow.isDestroyed()) {
-            dashboardWindow.close();
-        }
+    ipcMain.handle('return-to-dashboard', () => {
+        return switchToDashboardMode();
+    });
+
+    ipcMain.handle('get-app-mode', () => {
+        return currentAppMode;
+    });
+
+    ipcMain.on('open-dashboard', () => {
+        switchToDashboardMode();
     });
 
     ipcMain.handle('toggle-dashboard-fullscreen', () => {
@@ -420,6 +449,12 @@ function setupIPC() {
     ipcMain.on('minimize-dashboard', () => {
         if (dashboardWindow && !dashboardWindow.isDestroyed()) {
             dashboardWindow.minimize();
+        }
+    });
+
+    ipcMain.on('close-dashboard', () => {
+        if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+            dashboardWindow.close();
         }
     });
 
@@ -473,9 +508,7 @@ function setupIPC() {
     });
 
     ipcMain.on('close-pet', () => {
-        if (floatingWindow && !floatingWindow.isDestroyed()) {
-            floatingWindow.hide();
-        }
+        switchToDashboardMode();
     });
 
     ipcMain.on('hide-pet', () => {
@@ -485,14 +518,7 @@ function setupIPC() {
     });
 
     ipcMain.on('show-pet', () => {
-        if (!floatingWindow || floatingWindow.isDestroyed()) {
-            createFloatingWindow();
-        } else {
-            if (floatingWindow.isMinimized()) floatingWindow.restore();
-            floatingWindow.show();
-            floatingWindow.setAlwaysOnTop(true, 'screen-saver');
-            floatingWindow.focus();
-        }
+        switchToFloatingMode();
     });
 
     ipcMain.on('quit-app', () => {
@@ -516,11 +542,11 @@ function setupIPC() {
 app.whenReady().then(() => {
     setupIPC();
     setupTray();
-    createFloatingWindow();
+    switchToDashboardMode();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
-            createFloatingWindow();
+            switchToDashboardMode();
         }
     });
 });

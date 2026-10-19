@@ -209,8 +209,54 @@ h2 { font-size: 1.5rem; color: var(--color-primary); border-bottom: 1px solid va
     z-index: 50;
     border-radius: 8px;
     margin-bottom: 1rem;
+    -webkit-app-region: drag;
+    user-select: none;
+}
+.top-nav button,
+.top-nav select,
+.top-nav input,
+.top-nav label,
+.top-nav a,
+.no-drag {
+    -webkit-app-region: no-drag;
 }
 .nav-left, .nav-right { display: flex; gap: 0.75rem; align-items: center; }
+
+.window-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid var(--color-border);
+}
+
+.window-ctrl-btn {
+    min-width: 32px;
+    height: 30px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: bold;
+    line-height: 1;
+    font-family: inherit;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.window-ctrl-btn:hover {
+    background: rgba(0, 240, 255, 0.15);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.window-ctrl-btn.text-error:hover {
+    background: #e81123 !important;
+    border-color: #e81123 !important;
+    color: #ffffff !important;
+}
 
 .app-container {
     width: 100%;
@@ -702,29 +748,83 @@ body.fullscreen-mode .app-container {
 @keyframes slideInRight { 0% { transform: translateX(120%); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
 @keyframes explode { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
 
-/* --- Floating Widget Mode --- */
-body.floating-active .top-nav, body.floating-active .app-container { display: none !important; }
-body.floating-active .parallax-bg { display: none; }
-body.floating-active { background: transparent; min-height: auto; }
+/* --- Floating Widget Browser Preview Mode --- */
+body.floating-active {
+    background: var(--color-bg, #0b0d13) !important;
+    min-height: 100vh;
+}
+body.floating-active .parallax-bg {
+    display: block !important;
+    opacity: 0.6;
+}
+body.floating-active .top-nav,
+body.floating-active .app-container {
+    opacity: 0.35;
+    filter: blur(1.5px);
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
 body.floating-active .floating-widget {
+    display: flex !important;
+}
+
+.floating-widget {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 220px;
-    background: rgba(11, 13, 19, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--color-accent);
-    padding: 15px;
+    bottom: 24px;
+    right: 24px;
+    width: 250px;
+    background: rgba(11, 13, 19, 0.96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 2px solid var(--color-primary);
+    padding: 16px;
     border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.9), 0 0 20px rgba(0,240,255,0.2);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.95), 0 0 25px rgba(0,240,255,0.3);
     display: flex;
     flex-direction: column;
     gap: 10px;
     z-index: 9999;
+    animation: slideInRight 0.3s ease-out;
 }
-.floating-widget { display: none; }
-.fw-header { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-pixel); color: var(--color-accent); font-size: 1.2rem; }
-.fw-pet { height: 120px; display: flex; justify-content: center; align-items: center; position: relative; }
+.floating-widget.hidden-by-default {
+    display: none !important;
+}
+
+.fw-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-pixel);
+    color: var(--color-accent);
+    font-size: 1.15rem;
+}
+.fw-preview-tag {
+    font-size: 0.65rem;
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    text-align: center;
+    background: rgba(255, 184, 0, 0.1);
+}
+.fw-pet {
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+.fw-notice {
+    font-size: 0.72rem;
+    color: var(--color-text-dim);
+    text-align: center;
+    line-height: 1.3;
+}
+.fw-notice code {
+    color: var(--color-accent);
+    font-weight: bold;
+}
 
 /* --- DevPet 2.0 Enhancements: Environment, Tasks, Shop & CPS --- */
 .env-badge {
